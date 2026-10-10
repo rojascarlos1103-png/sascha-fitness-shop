@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel · Sascha Fitness Shop MX</title>
+<style>
+:root{
+  --azul:#24478f; --azul-osc:#1a3468; --lima:#a3d334;
+  --tinta:#12172a; --gris:#5b6478; --linea:#dde2ec;
+  --fondo:#f5f7fb; --blanco:#fff;
+  --rojo:#c62828; --ambar:#b26a00; --verde:#1b7a3d;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+button{font:inherit;cursor:pointer;border:0;border-radius:8px}
+input,select,textarea{font:inherit;padding:9px 11px;border:1px solid var(--linea);
+  border-radius:8px;background:var(--blanco);color:var(--tinta);width:100%}
+input:focus,select:focus{outline:2px solid var(--azul);outline-offset:1px}
+
+/* ---------- acceso ---------- */
+#acceso{min-height:100vh;display:grid;place-items:center;padding:24px}
+#acceso .caja{background:var(--blanco);padding:28px;border-radius:14px;
+  max-width:360px;width:100%;box-shadow:0 8px 30px rgba(18,23,42,.10)}
+#acceso h1{font-size:21px;margin-bottom:4px}
+#acceso p{color:var(--gris);font-size:13px;margin:0 0 20px}
+#acceso label{display:block;font-size:13px;color:var(--gris);margin:14px 0 5px}
+
+/* ---------- estructura ---------- */
+header{background:var(--azul);color:#fff;padding:12px 16px;
+  display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+header h1{font-size:16px;flex:1}
+header .salir{background:rgba(255,255,255,.16);color:#fff;padding:7px 12px;font-size:13px}
+nav{background:var(--blanco);border-bottom:1px solid var(--linea);
+  display:flex;overflow-x:auto;position:sticky;top:49px;z-index:19}
+nav button{background:none;padding:13px 15px;white-space:nowrap;color:var(--gris);
+  border-bottom:2.5px solid transparent;border-radius:0;font-size:14px}
+nav button.on{color:var(--azul);border-bottom-color:var(--lima);font-weight:600}
+main{padding:16px;max-width:1100px;margin:0 auto}
+section{display:none} section.on{display:block}
+
+/* ---------- piezas ---------- */
+.tarjeta{background:var(--blanco);border:1px solid var(--linea);
+  border-radius:12px;padding:14px;margin-bottom:10px}
+.fila{display:flex;gap:12px;align-items:center}
+.crece{flex:1;min-width:0}
+.truncar{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub{font-size:12.5px;color:var(--gris)}
+.barra{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.barra input{flex:1;min-width:180px}
+.btn{background:var(--azul);color:#fff;padding:9px 14px;font-size:14px}
+.btn:hover{background:var(--azul-osc)}
+.btn.claro{background:#eaeefa;color:var(--azul)}
+.btn.wa{background:#1f8f4e;color:#fff}
+.chip{display:inline-block;font-size:11.5px;padding:3px 8px;border-radius:99px;
+  background:#eef1f7;color:var(--gris)}
+.chip.rojo{background:#fdecec;color:var(--rojo)}
+.chip.ambar{background:#fdf3e2;color:var(--ambar)}
+.chip.verde{background:#e7f5ec;color:var(--verde)}
+.stock{display:flex;align-items:center;gap:6px}
+.stock button{width:32px;height:32px;background:#eef1f7;color:var(--azul);font-size:17px;line-height:1}
+    .precio { display:flex; align-items:center; gap:6px; flex:1; font-size:12.5px; }
+    .precio input { width:92px; padding:6px 8px; font-size:14px; background:#fffdf0; }
+.stock input{width:58px;text-align:center;padding:6px}
+.tablero{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.dato{background:var(--blanco);border:1px solid var(--linea);border-radius:12px;padding:14px}
+.dato b{display:block;font-size:26px;line-height:1.15;font-variant-numeric:tabular-nums}
+.dato span{font-size:12.5px;color:var(--gris)}
+.dato.alerta{border-color:#f3c9c9;background:#fffafa}
+.dato.alerta b{color:var(--rojo)}
+.vacio{text-align:center;color:var(--gris);padding:34px 14px;font-size:14px}
+.aviso{padding:11px 13px;border-radius:9px;font-size:13.5px;margin-bottom:12px}
+.aviso.err{background:#fdecec;color:var(--rojo)}
+.aviso.ok{background:#e7f5ec;color:var(--verde)}
+#brindis{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(80px);
+  background:var(--tinta);color:#fff;padding:11px 18px;border-radius:99px;font-size:14px;
+  opacity:0;transition:.22s;z-index:60;pointer-events:none}
+#brindis.ver{opacity:1;transform:translateX(-50%) translateY(0)}
+.np-campo{display:block;font-size:12.5px;color:var(--gris);margin-bottom:10px}
+.np-campo input,.np-campo select,.np-campo textarea{margin-top:4px}
+.np-check{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--tinta);margin:2px 0 12px;cursor:pointer}
+.np-check input{width:20px;height:20px;flex:0 0 auto;margin:0}
+.np-foto{text-align:center;margin-bottom:14px}
+.np-foto img{max-width:150px;max-height:150px;object-fit:contain;display:block;margin:0 auto 10px;
+  background:#f5f7fb;border-radius:10px;padding:6px}
+.nuevo-mini{width:52px;height:52px;object-fit:contain;background:#f5f7fb;border-radius:9px;padding:3px;flex:0 0 auto}
+@media (max-width:520px){
+  .fila{flex-wrap:wrap}
+  main{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<div id="acceso">
+  <div class="caja">
+    <h1>Panel de administración</h1>
+    <p>Sascha Fitness Shop MX</p>
+    <div id="errorAcceso"></div>
+    <label for="correo">Correo</label>
+    <input id="correo" type="email" autocomplete="username">
+    <label for="clave">Contraseña</label>
+    <input id="clave" type="password" autocomplete="current-password">
+    <button class="btn" style="width:100%;margin-top:18px;padding:11px" onclick="entrar()">Entrar</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<header>
+  <h1>Sascha Fitness Shop MX</h1>
+  <button class="salir" onclick="salir()">Salir</button>
+</header>
+
+<nav>
+  <button class="on" onclick="ver('resumen',this)">Resumen</button>
+  <button onclick="ver('inventario',this)">Inventario</button>
+  <button onclick="ver('productos',this)">Productos nuevos</button>
+  <button onclick="ver('pedidos',this)">Pedidos</button>
+  <button onclick="ver('clientes',this)">Clientes</button>
+  <button onclick="ver('recompras',this)">Recompras</button>
+  <button onclick="ver('espera',this)">Avísame</button>
+  <button onclick="ver('packs',this)">Packs y precios</button>
+</nav>
+
+<main>
+  <section id="resumen" class="on">
+    <div class="tablero" id="tablero"></div>
+    <h3 style="margin:18px 0 10px">Requiere tu atención</h3>
+    <div id="atencion"></div>
+  </section>
+
+  <section id="inventario">
+    <div class="barra">
+      <input id="buscar" placeholder="Buscar producto o SKU" oninput="pintarInventario()">
+      <select id="filtro" onchange="pintarInventario()" style="width:auto">
+        <option value="">Todo</option>
+        <option value="mayoreo">Se venden en Mayoreo</option>
+        <option value="agotado">Agotados</option>
+        <option value="negativo">Sobrevendidos</option>
+        <option value="Sascha Fitness">Sascha Fitness</option>
+        <option value="Recomendaciones de Sascha">Recomendaciones</option>
+        <option value="Otras marcas">Otras marcas</option>
+      </select>
+      <button class="btn claro" onclick="exportarInventario()">⬇ Exportar a Excel</button>
+    </div>
+    <div id="listaInventario"></div>
+  </section>
+
+  <section id="productos">
+    <p class="sub" style="margin:0 0 12px">
+      Das de alta el producto aquí y aparece solo en la tienda. Nadie tiene que subir archivos.
+    </p>
+
+    <div class="tarjeta">
+      <div class="np-foto">
+        <img id="np_vista" alt="">
+        <label class="btn claro" style="display:inline-block;text-align:center">
+          📷 Elegir o tomar foto
+          <input id="np_foto" type="file" accept="image/*" onchange="verFoto(this)" style="display:none">
+        </label>
+        <div class="sub" id="np_peso" style="margin-top:6px"></div>
+      </div>
+
+      <label class="np-campo">Nombre del producto
+        <input id="np_nombre" placeholder="Ej. Mascarilla Rejuran individual" maxlength="80"></label>
+
+      <div class="fila" style="gap:8px">
+        <label class="np-campo crece">Sección
+          <select id="np_seccion" onchange="llenarCategorias()"></select></label>
+        <label class="np-campo crece">Categoría
+          <select id="np_categoria"></select></label>
+      </div>
+
+      <label class="np-campo">Descripción corta
+        <textarea id="np_desc" rows="2" maxlength="220"
+          placeholder="Lo que lee la clienta debajo del nombre"></textarea></label>
+
+      <div class="fila" style="gap:8px">
+        <label class="np-campo crece">Precio menudeo
+          <input id="np_menudeo" type="number" min="0" step="1" inputmode="numeric" placeholder="$"></label>
+        <label class="np-campo crece">Existencias
+          <input id="np_stock" type="number" min="0" step="1" inputmode="numeric" value="1"></label>
+      </div>
+
+      <label class="np-check">
+        <input id="np_enmayoreo" type="checkbox" onchange="verMayoreo()"> También venderlo en Mayoreo</label>
+
+      <label class="np-campo" id="np_cajaMayoreo" style="display:none">Precio de mayoreo
+        <input id="np_mayoreo" type="number" min="0" step="1" inputmode="numeric" placeholder="$"></label>
+
+      <label class="np-campo">Cada cuántos días se le acaba a la clienta (para el recordatorio)
+        <input id="np_dias" type="number" min="0" step="1" inputmode="numeric" value="30"></label>
+
+      <div id="np_aviso"></div>
+      <button class="btn" id="np_guardar" onclick="guardarProducto()"
+              style="width:100%;margin-top:10px;padding:13px">Guardar producto</button>
+    </div>
+
+    <h3 style="margin:20px 0 10px;font-size:16px">Los que tú diste de alta</h3>
+    <div id="listaNuevos"></div>
+
+    <h3 style="margin:22px 0 4px;font-size:16px">Secciones y categorías</h3>
+    <p class="sub" style="margin:0 0 10px">
+      Una sección es una pestaña de la tienda. Una categoría es un bloque dentro de ella.
+    </p>
+    <div class="fila" style="gap:8px;margin-bottom:12px">
+      <input id="ns_nombre" class="crece" placeholder="Nueva sección, ej. 🎄 Navidad">
+      <button class="btn claro" onclick="crearSeccionPanel()">Agregar</button>
+    </div>
+    <div id="listaSecciones"></div>
+  </section>
+
+  <section id="pedidos">
+    <div class="barra">
+      <input id="buscarPedido" placeholder="Buscar por teléfono, nombre o folio" oninput="pintarPedidos()">
+      <select id="filtroPedido" onchange="pintarPedidos()" style="width:auto">
+        <option value="">Todos</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="pagado">Pagados</option>
+        <option value="enviado">Enviados</option>
+        <option value="entregado">Entregados</option>
+      </select>
+    </div>
+    <div id="listaPedidos"></div>
+  </section>
+
+  <section id="clientes">
+    <div class="barra">
+      <input id="buscarCliente" placeholder="Buscar por nombre, correo o teléfono" oninput="pintarClientes()">
+    </div>
+    <div id="listaClientes"></div>
+  </section>
+
+  <section id="recompras">
+    <p class="sub" style="margin:0 0 14px">
+      El correo sale solo. Aquí aparecen los que no lo abrieron, para mandarles WhatsApp.
+    </p>
+    <div id="listaRecompras"></div>
+  </section>
+
+  <section id="packs">
+    <p class="sub" style="margin:0 0 12px">
+      Precio de cada pack o combo. Los precios de menudeo y mayoreo de un producto suelto
+      se cambian en <b>Inventario</b>. El inventario no cambia aquí.
+    </p>
+    <div class="barra">
+      <input id="buscarPack" placeholder="Buscar por nombre" oninput="pintarPacks()">
+      <select id="filtroPack" onchange="pintarPacks()" style="width:auto">
+        <option value="pack">Packs</option>
+      </select>
+    </div>
+    <div id="listaPacks"></div>
+  </section>
+
+  <section id="espera">
+    <p class="sub" style="margin:0 0 14px">
+      Clientes que pidieron aviso cuando llegue un producto. Los que ya tienes en existencia
+      aparecen primero.
+    </p>
+    <div id="listaEspera"></div>
+  </section>
+</main>
+</div>
+
+<div id="brindis"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const URL_SUPABASE = 'https://kpbnliivccgaheqoccnr.supabase.co';
+const CLAVE_PUBLICA = 'sb_publishable_SYa3A6EOlaxDdMdfFvkhJg_cRLobqEh';
+const WHATSAPP = '5215512345678'; // ← pon aquí tu número, con 52 y sin signos
+
+const db = supabase.createClient(URL_SUPABASE, CLAVE_PUBLICA);
+
+let productos = [], pedidos = [], clientes = [], recompras = [], espera = [], presentaciones = [], componentes = [], respaldos = [], secciones = [], categorias = [];
+let fotoLista = null;
+
+/* ---------------- acceso ---------------- */
+async function entrar(){
+  const email = document.getElementById('correo').value.trim();
+  const password = document.getElementById('clave').value;
+  const caja = document.getElementById('errorAcceso');
+  caja.innerHTML = '';
+  if(!email || !password){
+    caja.innerHTML = '<div class="aviso err">Escribe tu correo y contraseña.</div>';
+    return;
+  }
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  if(error){
+    caja.innerHTML = '<div class="aviso err">No se pudo entrar. Revisa el correo y la contraseña.</div>';
+    return;
+  }
+  arrancar();
+}
+async function salir(){ await db.auth.signOut(); location.reload(); }
+
+async function revisarSesion(){
+  const { data } = await db.auth.getSession();
+  if(data.session) arrancar();
+}
+function arrancar(){
+  document.getElementById('acceso').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  cargarTodo();
+}
+
+/* ---------------- utilidades ---------------- */
+function brindis(t){
+  const b = document.getElementById('brindis');
+  b.textContent = t; b.classList.add('ver');
+  setTimeout(()=>b.classList.remove('ver'), 2200);
+}
+const pesos = n => '$' + Number(n||0).toLocaleString('es-MX');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function ver(id, boton){
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
+  boton.classList.add('on');
+}
+
+/* ---------------- carga ---------------- */
+async function cargarTodo(){
+  const [p, o, c, r, w, pr, cp, rs, sc, ct] = await Promise.all([
+    db.from('productos').select('*').order('linea').order('nombre'),
+    db.from('pedidos').select('*, clientes(nombre,telefono,email), pedido_items(*)').order('creado_en',{ascending:false}).limit(200),
+    db.from('clientes').select('*').order('creado_en',{ascending:false}).limit(400),
+    db.from('v_avisos_hoy').select('*'),
+    db.from('v_lista_espera').select('*'),
+    db.from('presentaciones').select('*').order('tipo').order('nombre'),
+    db.from('presentacion_componentes').select('*'),
+    db.from('respaldos').select('creado_en,filas,resultado').order('creado_en',{ascending:false}).limit(1),
+    db.from('secciones').select('*').order('orden'),
+    db.from('categorias').select('*').order('orden')
+  ]);
+  productos = p.data || []; pedidos = o.data || [];
+  clientes = c.data || []; recompras = r.data || []; espera = w.data || [];
+  presentaciones = pr.data || []; componentes = cp.data || [];
+  respaldos = rs.data || []; secciones = sc.data || []; categorias = ct.data || [];
+  pintarResumen(); pintarInventario(); pintarPedidos(); pintarClientes(); pintarRecompras(); pintarEspera(); pintarPacks();
+  llenarSecciones(); pintarNuevos(); pintarSecciones();
+}
+
+/* ---------------- resumen ---------------- */
+function pintarResumen(){
+  const hoy = new Date().toISOString().slice(0,10);
+  const delDia = pedidos.filter(p => (p.creado_en||'').slice(0,10) === hoy);
+  const vendidoMes = pedidos
+    .filter(p => ['pagado','enviado','entregado'].includes(p.estado)
+              && (p.creado_en||'').slice(0,7) === hoy.slice(0,7))
+    .reduce((s,p) => s + (p.total||0), 0);
+  const agotados = productos.filter(p => p.stock === 0).length;
+  const sobre = productos.filter(p => p.stock < 0).length;
+  const porCobrar = pedidos.filter(p => p.estado === 'pendiente').length;
+
+  document.getElementById('tablero').innerHTML = `
+    <div class="dato"><b>${delDia.length}</b><span>Pedidos hoy</span></div>
+    <div class="dato"><b>${pesos(vendidoMes)}</b><span>Vendido este mes</span></div>
+    <div class="dato"><b>${porCobrar}</b><span>Por confirmar pago</span></div>
+    <div class="dato ${agotados?'alerta':''}"><b>${agotados}</b><span>Agotados</span></div>
+    <div class="dato ${sobre?'alerta':''}"><b>${sobre}</b><span>Sobrevendidos</span></div>
+    <div class="dato"><b>${espera.length}</b><span>Esperan aviso</span></div>`;
+
+  const lista = [];
+  productos.filter(p=>p.stock<0).forEach(p=>lista.push(
+    `<div class="tarjeta"><div class="fila"><div class="crece">
+      <b>${esc(p.nombre)}</b><div class="sub">Faltan ${Math.abs(p.stock)} piezas por conseguir</div></div>
+      <span class="chip rojo">Sobrevendido</span></div></div>`));
+  productos.filter(p=>p.stock===0).slice(0,12).forEach(p=>lista.push(
+    `<div class="tarjeta"><div class="fila"><div class="crece">
+      <b>${esc(p.nombre)}</b><div class="sub">Oculto en menudeo, mayoreo y packs</div></div>
+      <span class="chip ambar">Agotado</span></div></div>`));
+  const listos = espera.filter(e=>e.ya_llego);
+  if(listos.length) lista.push(
+    `<div class="tarjeta"><div class="fila"><div class="crece">
+      <b>${listos.length} personas esperan un producto que ya tienes</b>
+      <div class="sub">Pidieron aviso y volvió a haber existencia</div></div>
+      <span class="chip verde">Avísame</span></div></div>`);
+  if(recompras.length) lista.push(
+    `<div class="tarjeta"><div class="fila"><div class="crece">
+      <b>${recompras.length} clientes por contactar</b>
+      <div class="sub">Se les acaba el producto en tres días</div></div>
+      <span class="chip verde">Recompras</span></div></div>`);
+
+  const rs = respaldos[0];
+  if(!rs){
+    lista.push(`<div class="tarjeta"><div class="fila"><div class="crece">
+      <b>Aún no hay respaldo de la base</b>
+      <div class="sub">Falta correr 16-respaldo.sql en Supabase</div></div>
+      <span class="chip rojo">Respaldo</span></div></div>`);
+  } else {
+    const dias = Math.floor((Date.now() - new Date(rs.creado_en)) / 86400000);
+    lista.push(`<div class="tarjeta"><div class="fila"><div class="crece">
+      <b>Último respaldo: ${dias === 0 ? 'hoy' : dias === 1 ? 'ayer' : 'hace ' + dias + ' días'}</b>
+      <div class="sub">${rs.filas || 0} registros guardados · llega a tu correo a las 5 a.m.</div></div>
+      <span class="chip ${dias > 2 ? 'ambar' : 'verde'}">Respaldo</span></div></div>`);
+  }
+
+  document.getElementById('atencion').innerHTML = lista.length ? lista.join('')
+    : '<div class="vacio">Todo en orden. Nada pendiente por ahora.</div>';
+}
+
+
+
+/* ---------------- secciones y categorías ---------------- */
+const SEC_FIJAS = ['sascha','kat','katmas'];
+
+function slugPanel(t){
+  return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+
+function idNuevaSeccion(nombre){
+  const reservados = ['registro','sascha','mayoreo','kat','katmas','checkout','contacto','packs'];
+  const base = slugPanel(nombre) || 'seccion';
+  let id = base, n = 2;
+  while(secciones.some(s => s.id === id) || reservados.indexOf(id) > -1){ id = base + '-' + n; n++; }
+  return id;
+}
+
+function cuantosEn(secId, cat){
+  return productos.filter(p => p.seccion === secId && (cat == null || p.categoria === cat)).length;
+}
+
+function pintarSecciones(){
+  const cont = document.getElementById('listaSecciones');
+  if(!cont) return;
+  cont.innerHTML = secciones.map(sec => {
+    const cats = categorias.filter(c => c.seccion_id === sec.id);
+    const fija = SEC_FIJAS.indexOf(sec.id) > -1;
+    const usados = cuantosEn(sec.id);
+    return `<div class="tarjeta" style="background:#fbfcfe">
+      <div class="fila">
+        <div class="crece"><b>${esc(sec.nombre)}</b>
+          <div class="sub">${esc(sec.id)} · ${cats.length} categorías${
+            usados ? ' · ' + usados + ' productos tuyos' : ''}</div></div>
+        ${fija ? '<span class="chip verde">De siempre</span>'
+               : `<button class="btn claro" style="color:var(--rojo);padding:7px 10px;font-size:12.5px"
+                     onclick="borrarSeccion('${sec.id}')">Eliminar</button>`}
+      </div>
+      <div style="margin-top:9px">
+        ${cats.map(c => `<div class="fila" style="padding:5px 0;border-top:1px solid #f0f3f8">
+            <div class="crece truncar sub" style="color:var(--tinta);font-size:13.5px">${esc(c.nombre)}</div>
+            <button class="btn claro" style="padding:5px 9px;font-size:12px"
+                    onclick="borrarCategoria(${c.id})">✕</button>
+          </div>`).join('') || '<div class="sub" style="padding:5px 0">Sin categorías todavía.</div>'}
+      </div>
+      <div class="fila" style="margin-top:9px;gap:7px">
+        <input id="nc_${sec.id}" placeholder="Nueva categoría, ej. 🎁 Regalos" class="crece" style="font-size:13.5px">
+        <button class="btn claro" onclick="crearCategoria('${sec.id}')">Agregar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function crearSeccionPanel(){
+  const campo = document.getElementById('ns_nombre');
+  const nombre = campo.value.trim();
+  if(!nombre){ brindis('Escribe el nombre de la sección'); return; }
+  if(secciones.some(s => s.nombre.trim().toLowerCase() === nombre.toLowerCase())){
+    brindis('Ya existe una sección con ese nombre'); return;
+  }
+  const orden = secciones.reduce((m,s) => Math.max(m, s.orden || 0), 0) + 1;
+  const { error } = await db.from('secciones').insert({ id: idNuevaSeccion(nombre), nombre: nombre, orden: orden });
+  if(error){ brindis('No se pudo crear: ' + error.message); return; }
+  campo.value = '';
+  brindis('Sección creada');
+  await cargarTodo();
+}
+
+async function crearCategoria(secId){
+  const campo = document.getElementById('nc_' + secId);
+  const nombre = (campo.value || '').trim();
+  if(!nombre){ brindis('Escribe el nombre de la categoría'); return; }
+  if(categorias.some(c => c.seccion_id === secId && c.nombre.trim().toLowerCase() === nombre.toLowerCase())){
+    brindis('Esa categoría ya existe en esta sección'); return;
+  }
+  const orden = categorias.filter(c => c.seccion_id === secId)
+                          .reduce((m,c) => Math.max(m, c.orden || 0), 0) + 1;
+  const { error } = await db.from('categorias').insert({ seccion_id: secId, nombre: nombre, orden: orden });
+  if(error){ brindis('No se pudo crear: ' + error.message); return; }
+  brindis('Categoría creada');
+  await cargarTodo();
+}
+
+async function borrarCategoria(id){
+  const c = categorias.find(x => x.id === id);
+  if(!c) return;
+  const n = cuantosEn(c.seccion_id, c.nombre);
+  if(n){ alert('No se puede quitar "' + c.nombre + '": tienes ' + n +
+               ' producto(s) ahí.\n\nCámbialos de categoría o elimínalos primero.'); return; }
+  if(!confirm('¿Quitar la categoría "' + c.nombre + '"?')) return;
+  const { error } = await db.from('categorias').delete().eq('id', id);
+  if(error){ brindis('No se pudo quitar: ' + error.message); return; }
+  brindis('Categoría eliminada');
+  await cargarTodo();
+}
+
+async function borrarSeccion(id){
+  if(SEC_FIJAS.indexOf(id) > -1) return;
+  const sec = secciones.find(s => s.id === id);
+  if(!sec) return;
+  const n = cuantosEn(id);
+  if(n){ alert('No se puede eliminar "' + sec.nombre + '": tienes ' + n +
+               ' producto(s) ahí.\n\nMuévelos o elimínalos primero.'); return; }
+  if(!confirm('¿Eliminar la sección "' + sec.nombre + '" y sus categorías?')) return;
+  const { error } = await db.from('secciones').delete().eq('id', id);
+  if(error){ brindis('No se pudo eliminar: ' + error.message); return; }
+  brindis('Sección eliminada');
+  await cargarTodo();
+}
+
+/* ---------------- productos nuevos ---------------- */
+const LINEA_DE = { sascha:'Sascha Fitness', kat:'Recomendaciones de Sascha', katmas:'Otras marcas' };
+
+function llenarSecciones(){
+  const sel = document.getElementById('np_seccion');
+  if(!sel) return;
+  const antes = sel.value;
+  sel.innerHTML = secciones.map(x => `<option value="${esc(x.id)}">${esc(x.nombre)}</option>`).join('');
+  if(antes) sel.value = antes;
+  llenarCategorias();
+}
+
+function llenarCategorias(){
+  const sec = (document.getElementById('np_seccion') || {}).value;
+  const sel = document.getElementById('np_categoria');
+  if(!sel) return;
+  const lista = categorias.filter(c => c.seccion_id === sec);
+  sel.innerHTML = lista.map(c => `<option value="${esc(c.nombre)}">${esc(c.nombre)}</option>`).join('')
+                || '<option value="">(sin categorías)</option>';
+}
+
+function verMayoreo(){
+  document.getElementById('np_cajaMayoreo').style.display =
+    document.getElementById('np_enmayoreo').checked ? 'block' : 'none';
+}
+
+/* la foto del celular pesa varios MB: se achica antes de subirla */
+function comprimir(archivo, lado){
+  return new Promise(function(listo, falla){
+    const lector = new FileReader();
+    lector.onload = function(){
+      const img = new Image();
+      img.onload = function(){
+        let w = img.width, h = img.height;
+        const f = Math.min(1, lado / Math.max(w, h));
+        w = Math.max(1, Math.round(w * f)); h = Math.max(1, Math.round(h * f));
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const x = c.getContext('2d');
+        x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h);
+        x.drawImage(img, 0, 0, w, h);
+        c.toBlob(function(b){ b ? listo(b) : falla(new Error('No se pudo preparar la foto')); },
+                 'image/jpeg', 0.85);
+      };
+      img.onerror = function(){ falla(new Error('Ese archivo no es una imagen')); };
+      img.src = lector.result;
+    };
+    lector.onerror = function(){ falla(new Error('No se pudo leer la foto')); };
+    lector.readAsDataURL(archivo);
+  });
+}
+
+async function verFoto(input){
+  const f = input.files && input.files[0];
+  const vista = document.getElementById('np_vista');
+  const peso  = document.getElementById('np_peso');
+  fotoLista = null; vista.removeAttribute('src'); vista.style.display = 'none'; peso.textContent = '';
+  if(!f) return;
+  peso.textContent = 'Preparando…';
+  try{
+    const blob = await comprimir(f, 1000);
+    fotoLista = blob;
+    vista.src = URL.createObjectURL(blob);
+    vista.style.display = 'block';
+    peso.textContent = 'Lista · ' + Math.round(blob.size / 1024) + ' KB';
+  }catch(e){
+    peso.textContent = e.message || 'No se pudo usar esa foto';
+  }
+}
+
+function nuevoSku(){
+  let n = 0;
+  productos.forEach(function(p){
+    const m = /^NV-(\d+)$/.exec(p.sku || '');
+    if(m) n = Math.max(n, parseInt(m[1], 10));
+  });
+  return 'NV-' + String(n + 1).padStart(3, '0');
+}
+
+function avisoNuevo(texto, tipo){
+  document.getElementById('np_aviso').innerHTML =
+    texto ? `<div class="aviso ${tipo || 'err'}">${esc(texto)}</div>` : '';
+}
+
+async function guardarProducto(){
+  const nombre  = document.getElementById('np_nombre').value.trim();
+  const seccion = document.getElementById('np_seccion').value;
+  const cat     = document.getElementById('np_categoria').value;
+  const desc    = document.getElementById('np_desc').value.trim();
+  const menudeo = parseInt(document.getElementById('np_menudeo').value, 10);
+  const stock   = parseInt(document.getElementById('np_stock').value, 10);
+  const dias    = parseInt(document.getElementById('np_dias').value, 10);
+  const enMay   = document.getElementById('np_enmayoreo').checked;
+  const mayoreo = parseInt(document.getElementById('np_mayoreo').value, 10);
+
+  if(!nombre) return avisoNuevo('Ponle nombre al producto.');
+  if(productos.some(p => (p.nombre || '').toLowerCase() === nombre.toLowerCase()))
+    return avisoNuevo('Ya tienes un producto que se llama así.');
+  if(!seccion || !cat) return avisoNuevo('Elige sección y categoría.');
+  if(isNaN(menudeo) || menudeo <= 0) return avisoNuevo('Falta el precio de menudeo.');
+  if(isNaN(stock) || stock < 0) return avisoNuevo('Pon cuántas piezas tienes.');
+  if(enMay && (isNaN(mayoreo) || mayoreo <= 0))
+    return avisoNuevo('Marcaste que va en Mayoreo: falta ese precio.');
+  if(!fotoLista) return avisoNuevo('Falta la foto del producto.');
+
+  const btn = document.getElementById('np_guardar');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  avisoNuevo('');
+
+  try{
+    const sku = nuevoSku();
+    const archivo = sku.toLowerCase() + '-' + Date.now() + '.jpg';
+    const sub = await db.storage.from('fotos')
+      .upload(archivo, fotoLista, { contentType: 'image/jpeg', upsert: true });
+    if(sub.error) throw new Error('No se pudo subir la foto: ' + sub.error.message);
+    const url = db.storage.from('fotos').getPublicUrl(archivo).data.publicUrl;
+
+    const ins = await db.from('productos').insert({
+      sku: sku, nombre: nombre, linea: LINEA_DE[seccion] || 'Otras marcas',
+      categoria: cat, seccion: seccion, descripcion: desc || null,
+      stock: stock, precio_menudeo: menudeo,
+      precio_mayoreo: enMay ? mayoreo : null, en_mayoreo: enMay,
+      dias_duracion: isNaN(dias) ? 30 : dias,
+      imagen_url: url, activo: true
+    });
+    if(ins.error) throw new Error('No se pudo guardar: ' + ins.error.message);
+
+    ['np_nombre','np_desc','np_menudeo','np_mayoreo'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('np_stock').value = '1';
+    document.getElementById('np_enmayoreo').checked = false; verMayoreo();
+    document.getElementById('np_foto').value = '';
+    const vista = document.getElementById('np_vista');
+    vista.removeAttribute('src'); vista.style.display = 'none';
+    document.getElementById('np_peso').textContent = '';
+    fotoLista = null;
+
+    avisoNuevo(nombre + ' ya está en la tienda (' + sku + ').', 'ok');
+    brindis('Producto publicado');
+    await cargarTodo();
+  }catch(e){
+    avisoNuevo(e.message || 'Algo falló al guardar.');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Guardar producto';
+  }
+}
+
+function pintarNuevos(){
+  const cont = document.getElementById('listaNuevos');
+  if(!cont) return;
+  const lista = productos.filter(p => p.seccion);
+  if(!lista.length){
+    cont.innerHTML = '<div class="vacio">Todavía no has dado de alta ninguno.</div>';
+    return;
+  }
+  const nombreSec = id => (secciones.find(x => x.id === id) || {}).nombre || id;
+  cont.innerHTML = lista.map(p => `
+    <div class="tarjeta">
+      <div class="fila">
+        <img class="nuevo-mini" src="${esc(p.imagen_url || '')}" alt="">
+        <div class="crece">
+          <div class="truncar"><b>${esc(p.nombre)}</b></div>
+          <div class="sub">${esc(nombreSec(p.seccion))} · ${esc(p.categoria || '')}</div>
+          <div class="sub">${esc(p.sku)} · ${pesos(p.precio_menudeo)}${
+            p.en_mayoreo ? ' · mayoreo ' + pesos(p.precio_mayoreo) : ''} · ${p.stock} pzas</div>
+        </div>
+        ${p.activo === false ? '<span class="chip ambar">Oculto</span>'
+                             : '<span class="chip verde">En la tienda</span>'}
+      </div>
+      <div class="fila" style="margin-top:10px;gap:8px">
+        <button class="btn claro crece" onclick="ocultarProducto('${p.sku}', ${p.activo === false})">
+          ${p.activo === false ? '👁 Mostrar' : '🚫 Ocultar'}</button>
+        <button class="btn claro" style="color:var(--rojo)"
+                onclick="borrarProducto('${p.sku}')">Eliminar</button>
+      </div>
+    </div>`).join('');
+}
+
+async function ocultarProducto(sku, estabaOculto){
+  const { error } = await db.from('productos').update({ activo: estabaOculto }).eq('sku', sku);
+  if(error){ brindis('No se pudo cambiar. Revisa tu conexión.'); return; }
+  const p = productos.find(x => x.sku === sku);
+  if(p) p.activo = estabaOculto;
+  pintarInventario(); pintarNuevos();
+  brindis(estabaOculto ? 'Vuelve a verse en la tienda' : 'Oculto en la tienda');
+}
+
+async function borrarProducto(sku){
+  const p = productos.find(x => x.sku === sku);
+  if(!p) return;
+  if(!confirm('¿Eliminar "' + p.nombre + '" para siempre?\n\nSi sólo quieres que deje de verse, usa Ocultar.')) return;
+  const { error } = await db.from('productos').delete().eq('sku', sku);
+  if(error){ brindis('No se pudo eliminar: ' + error.message); return; }
+  brindis('Producto eliminado');
+  await cargarTodo();
+}
+
+/* ---------------- inventario ---------------- */
+/* ¿este producto aparece en la sección Mayoreo de la tienda? */
+function enMayoreo(nombre){
+  if(presentaciones.some(x => x.tipo === 'mayoreo' && x.nombre === nombre)) return true;
+  return productos.some(x => x.nombre === nombre && x.en_mayoreo);
+}
+
+function pintarInventario(){
+  const q = document.getElementById('buscar').value.toLowerCase().trim();
+  const f = document.getElementById('filtro').value;
+  let lista = productos;
+  if(f === 'agotado') lista = lista.filter(p=>p.stock === 0);
+  else if(f === 'negativo') lista = lista.filter(p=>p.stock < 0);
+  else if(f === 'mayoreo') lista = lista.filter(p=>enMayoreo(p.nombre));
+  else if(f) lista = lista.filter(p=>p.linea === f);
+  if(q) lista = lista.filter(p =>
+    p.nombre.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+
+  document.getElementById('listaInventario').innerHTML = lista.length ? lista.map(p => {
+    const chip = p.stock < 0 ? '<span class="chip rojo">Sobrevendido</span>'
+               : p.stock === 0 ? '<span class="chip ambar">Agotado</span>'
+               : '<span class="chip verde">A la venta</span>';
+    return `<div class="tarjeta">
+      <div class="fila">
+        <div class="crece">
+          <div class="truncar"><b>${esc(p.nombre)}</b></div>
+          <div class="sub">${esc(p.sku)}</div>
+        </div>
+        ${chip}${p.activo === false ? '<span class="chip ambar">Oculto</span>' : ''}
+        <div class="stock">
+          <button onclick="ajustar('${p.sku}',-1)" aria-label="Quitar una pieza">−</button>
+          <input type="number" value="${p.stock}" id="s_${p.sku}"
+                 onchange="fijar('${p.sku}', this.value)">
+          <button onclick="ajustar('${p.sku}',1)" aria-label="Agregar una pieza">+</button>
+        </div>
+      </div>
+      <div class="fila" style="margin-top:10px; gap:8px">
+        <label class="sub precio">Menudeo
+          <input type="number" min="0" step="1" value="${p.precio_menudeo ?? ''}"
+                 onchange="fijarPrecio('${p.sku}','precio_menudeo', this.value)">
+        </label>
+        <label class="sub precio">Mayoreo ${enMayoreo(p.nombre)
+            ? '<span class="chip verde" style="font-size:10.5px;padding:1px 6px">en la tienda</span>'
+            : '<span class="sub" style="font-size:11px">no se vende así</span>'}
+          <input type="number" min="0" step="1" value="${p.precio_mayoreo ?? ''}"
+                 placeholder="—"
+                 onchange="fijarPrecio('${p.sku}','precio_mayoreo', this.value)">
+        </label>
+        <button class="btn claro" style="padding:8px 11px;font-size:12.5px;align-self:flex-end"
+                onclick="ocultarProducto('${p.sku}', ${p.activo === false})">
+          ${p.activo === false ? '👁 Mostrar' : '🚫 Ocultar'}</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="vacio">Ningún producto coincide con esa búsqueda.</div>';
+}
+
+async function ajustar(sku, delta){
+  const p = productos.find(x=>x.sku === sku);
+  await fijar(sku, p.stock + delta);
+}
+async function fijarPrecio(sku, campo, valor){
+  const txt = String(valor).trim();
+  const precio = txt === '' ? null : Math.round(Number(txt));
+  if(txt !== '' && (isNaN(precio) || precio < 0)){ brindis('Ese precio no es válido'); return; }
+  const p = productos.find(x => x.sku === sku);
+  const antes = p[campo];
+  if(antes === precio) return;
+  const { error } = await db.from('productos').update({ [campo]: precio }).eq('sku', sku);
+  if(error){ brindis('No se guardó el precio. Revisa tu conexión.'); return; }
+  p[campo] = precio;
+
+  /* la fila equivalente en presentaciones no se queda con el precio viejo */
+  try{
+    const tipo = (campo === 'precio_menudeo') ? 'menudeo' : 'mayoreo';
+    await db.from('presentaciones').update({ precio }).eq('nombre', p.nombre).eq('tipo', tipo);
+    const pr = presentaciones.find(x => x.nombre === p.nombre && x.tipo === tipo);
+    if(pr) pr.precio = precio;
+  }catch(e){}
+
+  pintarInventario();
+  brindis((campo === 'precio_menudeo' ? 'Menudeo' : 'Mayoreo') + ': ' +
+          (precio === null ? 'sin precio' : pesos(precio)) + ' · ' + p.nombre);
+}
+
+async function fijar(sku, valor){
+  const stock = parseInt(valor, 10);
+  if(isNaN(stock)) return;
+  const { error } = await db.from('productos').update({ stock }).eq('sku', sku);
+  if(error){ brindis('No se guardó. Revisa tu conexión.'); return; }
+  productos.find(x=>x.sku === sku).stock = stock;
+  pintarInventario(); pintarResumen();
+  brindis(stock === 0 ? 'Agotado en las tres secciones' : 'Inventario actualizado');
+}
+
+/* ---------------- pedidos ---------------- */
+const ESTADOS = ['pendiente','pagado','enviado','entregado','cancelado'];
+function pintarPedidos(){
+  const f = document.getElementById('filtroPedido').value;
+  const q = (document.getElementById('buscarPedido').value || '')
+              .toLowerCase().replace(/[\s()-]/g,'').trim();
+  let lista = f ? pedidos.filter(p=>p.estado === f) : pedidos;
+  if(q) lista = lista.filter(p => {
+    const c = p.clientes || {};
+    const campos = [(p.folio||''), (c.nombre||''), (c.telefono||''), (c.email||'')]
+                     .join(' ').toLowerCase().replace(/[\s()-]/g,'');
+    return campos.includes(q);
+  });
+  document.getElementById('listaPedidos').innerHTML = lista.length ? lista.map(p => {
+    const items = (p.pedido_items||[])
+      .map(i => `${i.cantidad}× ${esc(i.descripcion)}`).join('<br>');
+    const cliente = p.clientes || {};
+    return `<div class="tarjeta">
+      <div class="fila" style="margin-bottom:10px">
+        <div class="crece">
+          <b>${esc(p.folio || 'Pedido ' + p.id)}</b>
+          <div class="sub">${esc(cliente.nombre||'Sin cliente')} · ${new Date(p.creado_en).toLocaleDateString('es-MX')}${p.metodo_pago ? ' · ' + esc(p.metodo_pago) : ''}</div>
+        </div>
+        <div style="text-align:right">
+          <b>${pesos(p.total)}</b>
+          ${p.descuento ? `<div class="sub" style="color:#1b7a3d">−${pesos(p.descuento)} (5%)</div>` : ''}
+          ${p.envio ? `<div class="sub">+${pesos(p.envio)} envío</div>` : ''}
+        </div>
+      </div>
+      <div class="sub" style="margin-bottom:10px">${items || 'Sin partidas'}</div>
+      <div class="fila">
+        <select onchange="cambiarEstado(${p.id}, this.value)" style="width:auto">
+          ${ESTADOS.map(e=>`<option ${e===p.estado?'selected':''}>${e}</option>`).join('')}
+        </select>
+        ${cliente.telefono ? `<a class="btn wa" style="text-decoration:none;padding:9px 14px"
+           href="https://wa.me/${esc(cliente.telefono).replace(/\D/g,'')}" target="_blank">WhatsApp</a>` : ''}
+      </div>
+    </div>`;
+  }).join('') : '<div class="vacio">Todavía no hay pedidos aquí.</div>';
+}
+
+async function cambiarEstado(id, estado){
+  const { error } = await db.from('pedidos').update({ estado }).eq('id', id);
+  if(error){ brindis('No se pudo cambiar el estado.'); return; }
+  brindis(estado === 'pagado' ? 'Pagado. Inventario descontado.' : 'Estado actualizado');
+  cargarTodo();
+}
+
+/* ---------------- clientes ---------------- */
+function pintarClientes(){
+  const q = document.getElementById('buscarCliente').value.toLowerCase().trim();
+  const lista = q ? clientes.filter(c =>
+    (c.nombre+c.email+c.telefono).toLowerCase().includes(q)) : clientes;
+  document.getElementById('listaClientes').innerHTML = lista.length ? lista.map(c => {
+    const suyos = pedidos.filter(p => p.cliente_id === c.id);
+    const gastado = suyos.filter(p=>['pagado','enviado','entregado'].includes(p.estado))
+                         .reduce((s,p)=>s+(p.total||0),0);
+    return `<div class="tarjeta"><div class="fila">
+      <div class="crece">
+        <div class="truncar"><b>${esc(c.nombre)}</b></div>
+        <div class="sub">${esc(c.telefono)} · ${esc(c.email)}</div>
+        <div class="sub">${suyos.length} pedidos · ${pesos(gastado)}</div>
+      </div>
+      <a class="btn wa" style="text-decoration:none;padding:9px 14px"
+         href="https://wa.me/${esc(c.telefono).replace(/\D/g,'')}" target="_blank">WhatsApp</a>
+    </div></div>`;
+  }).join('') : '<div class="vacio">Sin clientes que coincidan.</div>';
+}
+
+/* ---------------- recompras ---------------- */
+function pintarRecompras(){
+  document.getElementById('listaRecompras').innerHTML = recompras.length ? recompras.map(r => {
+    const abrio = r.correo_abierto ? '<span class="chip verde">Abrió el correo</span>'
+                : r.correo_enviado ? '<span class="chip ambar">No lo ha abierto</span>'
+                : '<span class="chip">Correo en camino</span>';
+    const texto = encodeURIComponent(
+      `¡Hola ${r.nombre}! 👋 Hace un mes te llevaste tu ${r.producto}. `+
+      `Calculo que ya se te está acabando 😄 ¿Te aparto una para que no te quedes sin?`);
+    return `<div class="tarjeta">
+      <div class="fila" style="margin-bottom:10px">
+        <div class="crece">
+          <div class="truncar"><b>${esc(r.nombre)}</b></div>
+          <div class="sub">${esc(r.producto)}</div>
+        </div>${abrio}
+      </div>
+      <div class="fila">
+        <a class="btn wa crece" style="text-decoration:none;text-align:center;padding:10px"
+           href="https://wa.me/${esc(r.telefono).replace(/\D/g,'')}?text=${texto}"
+           target="_blank" onclick="marcarEnviado(${r.id})">Enviar WhatsApp</a>
+      </div>
+    </div>`;
+  }).join('') : '<div class="vacio">Nadie por contactar hoy. Los correos salen solos.</div>';
+}
+
+function pintarEspera(){
+  document.getElementById('listaEspera').innerHTML = espera.length ? espera.map(e => {
+    const chip = e.ya_llego ? '<span class="chip verde">Ya lo tienes</span>'
+                            : '<span class="chip ambar">Sigue agotado</span>';
+    const desde = new Date(e.creado_en).toLocaleDateString('es-MX');
+    const texto = encodeURIComponent(
+      `¡Hola ${e.nombre || ''}! 👋 Ya llegó el ${e.producto} que estabas esperando. `+
+      `¿Te lo aparto?`);
+    const tel = (e.telefono||'').replace(/\D/g,'');
+    return `<div class="tarjeta">
+      <div class="fila" style="margin-bottom:10px">
+        <div class="crece">
+          <div class="truncar"><b>${esc(e.producto)}</b></div>
+          <div class="sub">${esc(e.nombre||'Sin nombre')} · ${esc(e.telefono||'sin teléfono')}</div>
+          <div class="sub">Lo pidió el ${desde}</div>
+        </div>${chip}
+      </div>
+      <div class="fila">
+        ${tel ? `<a class="btn wa crece" style="text-decoration:none;text-align:center;padding:10px"
+           href="https://wa.me/${tel}?text=${texto}" target="_blank">Avisarle por WhatsApp</a>` : ''}
+        <button class="btn claro" onclick="yaAvise(${e.id})">Ya le avisé</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="vacio">Nadie está esperando productos por ahora.</div>';
+}
+
+async function yaAvise(id){
+  const { error } = await db.from('lista_espera')
+                            .update({ avisado: new Date().toISOString() }).eq('id', id);
+  if(error){ brindis('No se pudo guardar.'); return; }
+  brindis('Listo, sale de la lista');
+  cargarTodo();
+}
+
+
+/* ---------------- exportar inventario ---------------- */
+function inventarioFiltrado(){
+  const q = (document.getElementById('buscar').value || '').toLowerCase().trim();
+  const f = document.getElementById('filtro').value;
+  let lista = productos;
+  if(f === 'agotado') lista = lista.filter(p => p.stock === 0);
+  else if(f === 'negativo') lista = lista.filter(p => p.stock < 0);
+  else if(f) lista = lista.filter(p => p.linea === f);
+  if(q) lista = lista.filter(p => p.nombre.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+  return lista;
+}
+
+function exportarInventario(){
+  if(typeof XLSX === 'undefined'){ brindis('No cargó la librería de Excel. Revisa tu internet.'); return; }
+  const lista = inventarioFiltrado();
+  if(!lista.length){ brindis('No hay productos que exportar'); return; }
+
+  const filas = lista.map(p => ({
+    'SKU': p.sku,
+    'Producto': p.nombre,
+    'Línea': p.linea,
+    'Categoría': p.categoria || '',
+    'Stock': p.stock,
+    'Estado': p.stock < 0 ? 'Sobrevendido' : p.stock === 0 ? 'Agotado'
+            : p.stock === 1 ? 'Última pieza' : 'A la venta',
+    'Precio menudeo': p.precio_menudeo || '',
+    'Precio mayoreo': p.precio_mayoreo || '',
+    'Valor en piso': (p.stock > 0 && p.precio_menudeo) ? p.stock * p.precio_menudeo : 0,
+    'Días de duración': p.dias_duracion || '',
+    'Insignia': p.insignia || ''
+  }));
+
+  const total = filas.reduce((s, f) => s + (f['Valor en piso'] || 0), 0);
+  const piezas = filas.reduce((s, f) => s + (f['Stock'] > 0 ? f['Stock'] : 0), 0);
+  filas.push({});
+  filas.push({ 'Producto': 'TOTAL', 'Stock': piezas, 'Valor en piso': total });
+
+  const hoja = XLSX.utils.json_to_sheet(filas);
+  hoja['!cols'] = [{wch:12},{wch:38},{wch:24},{wch:28},{wch:8},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:16}];
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, 'Inventario');
+
+  const d = new Date();
+  const fecha = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  XLSX.writeFile(libro, 'inventario-' + fecha + '.xlsx');
+  brindis(lista.length + ' productos exportados');
+}
+
+/* ---------------- packs y precios de venta ---------------- */
+function nombreSku(sku){
+  const p = productos.find(x => x.sku === sku);
+  return p ? p.nombre : sku;
+}
+
+function pintarPacks(){
+  const cont = document.getElementById('listaPacks');
+  if(!cont) return;
+  const q = (document.getElementById('buscarPack').value || '').toLowerCase().trim();
+  const f = document.getElementById('filtroPack').value;
+  let lista = presentaciones.filter(p => p.tipo === (f || 'pack'));
+  if(q) lista = lista.filter(p => (p.nombre || '').toLowerCase().includes(q));
+
+  const ETIQUETA = { pack:'Pack', mayoreo:'Mayoreo', menudeo:'Menudeo' };
+  cont.innerHTML = lista.length ? lista.map(p => {
+    const partes = componentes.filter(c => c.presentacion_id === p.id)
+      .map(c => (c.sku ? nombreSku(c.sku) : (c.grupo === 'FIT9|RESTORE' ? 'FIT 9 o RESTORE' : 'sabor a elegir'))
+                + (c.cantidad > 1 ? ' ×' + c.cantidad : ''));
+    return `<div class="tarjeta">
+      <div class="fila">
+        <div class="crece">
+          <div class="truncar"><b>${esc(p.nombre)}</b></div>
+          <div class="sub">${esc(ETIQUETA[p.tipo] || p.tipo)}${partes.length ? ' · descuenta ' + esc(partes.join(' + ')) : ''}</div>
+        </div>
+        <label class="sub precio" style="flex:0 0 auto">Precio
+          <input type="number" min="0" step="1" value="${p.precio ?? ''}"
+                 onchange="fijarPrecioPres(${p.id}, this.value)">
+        </label>
+      </div>
+    </div>`;
+  }).join('') : '<div class="vacio">Nada con ese nombre.</div>';
+}
+
+async function fijarPrecioPres(id, valor){
+  const precio = Math.round(Number(String(valor).trim()));
+  if(isNaN(precio) || precio < 0){ brindis('Ese precio no es válido'); return; }
+  const p = presentaciones.find(x => x.id === id);
+  if(!p || p.precio === precio) return;
+  const { error } = await db.from('presentaciones').update({ precio }).eq('id', id);
+  if(error){ brindis('No se guardó el precio. Revisa tu conexión.'); return; }
+  p.precio = precio;
+  brindis(pesos(precio) + ' · ' + p.nombre);
+}
+
+async function marcarEnviado(id){
+  await db.from('avisos_recompra')
+          .update({ whatsapp_enviado: new Date().toISOString() }).eq('id', id);
+}
+
+revisarSesion();
+</script>
+</body>
+</html>
