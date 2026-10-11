@@ -78,6 +78,14 @@ section{display:none} section.on{display:block}
   background:var(--tinta);color:#fff;padding:11px 18px;border-radius:99px;font-size:14px;
   opacity:0;transition:.22s;z-index:60;pointer-events:none}
 #brindis.ver{opacity:1;transform:translateX(-50%) translateY(0)}
+.barra .np-check{flex:0 0 auto;margin:0}
+.barra .np-check input{flex:0 0 auto;min-width:0;width:20px;height:20px}
+.rank{display:flex;align-items:center;gap:10px;padding:7px 0}
+.rank-nom{flex:0 0 38%;min-width:0;font-size:13.5px;color:var(--tinta)}
+.rank-barra{flex:1;min-width:40px;height:8px;background:#eef1f7;border-radius:4px}
+.rank-barra span{display:block;height:8px;background:var(--azul);border-radius:0 4px 4px 0}
+.rank-val{flex:0 0 auto;font-size:13px;font-weight:700;color:var(--gris);min-width:66px;text-align:right}
+@media (max-width:520px){ .rank-nom{flex:0 0 44%} .rank-val{min-width:58px;font-size:12.5px} }
 .np-campo{display:block;font-size:12.5px;color:var(--gris);margin-bottom:10px}
 .np-campo input,.np-campo select,.np-campo textarea{margin-top:4px}
 .np-check{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--tinta);margin:2px 0 12px;cursor:pointer}
@@ -118,6 +126,7 @@ section{display:none} section.on{display:block}
   <button onclick="ver('inventario',this)">Inventario</button>
   <button onclick="ver('productos',this)">Productos nuevos</button>
   <button onclick="ver('pedidos',this)">Pedidos</button>
+  <button onclick="ver('reportes',this)">Qué se vende</button>
   <button onclick="ver('clientes',this)">Clientes</button>
   <button onclick="ver('recompras',this)">Recompras</button>
   <button onclick="ver('espera',this)">Avísame</button>
@@ -226,6 +235,40 @@ section{display:none} section.on{display:block}
     <div id="listaPedidos"></div>
   </section>
 
+  <section id="reportes">
+    <div class="barra">
+      <select id="repPeriodo" onchange="pintarReportes()" style="width:auto">
+        <option value="mes">Este mes</option>
+        <option value="30">Últimos 30 días</option>
+        <option value="90">Últimos 90 días</option>
+        <option value="anio">Este año</option>
+        <option value="todo">Todo</option>
+      </select>
+      <label class="np-check" style="margin:0">
+        <input id="repPendientes" type="checkbox" onchange="pintarReportes()"> Contar los no pagados
+      </label>
+      <button class="btn claro" onclick="exportarReporte()">⬇ Excel</button>
+    </div>
+
+    <div class="tablero" id="repTablero"></div>
+
+    <h3 style="margin:20px 0 2px;font-size:16px">Lo que más sale</h3>
+    <p class="sub" style="margin:0 0 10px">Piezas que salieron de tu bodega, contando las que iban dentro de un pack. Esta es tu lista de compras.</p>
+    <div class="tarjeta" id="repPiezas"></div>
+
+    <h3 style="margin:20px 0 2px;font-size:16px">Lo que más deja</h3>
+    <p class="sub" style="margin:0 0 10px">Por dinero cobrado. Aquí los packs cuentan como packs, no por sus piezas.</p>
+    <div class="tarjeta" id="repDinero"></div>
+
+    <h3 style="margin:20px 0 2px;font-size:16px">Se te acabó y te lo siguen pidiendo</h3>
+    <p class="sub" style="margin:0 0 10px">Agotados que vendieron o que tienen gente en la lista de "Avísame".</p>
+    <div class="tarjeta" id="repAgotados"></div>
+
+    <h3 style="margin:20px 0 2px;font-size:16px">Dinero detenido</h3>
+    <p class="sub" style="margin:0 0 10px" id="repQuietosTotal"></p>
+    <div class="tarjeta" id="repQuietos"></div>
+  </section>
+
   <section id="clientes">
     <div class="barra">
       <input id="buscarCliente" placeholder="Buscar por nombre, correo o teléfono" oninput="pintarClientes()">
@@ -275,7 +318,7 @@ const WHATSAPP = '5215512345678'; // ← pon aquí tu número, con 52 y sin sign
 
 const db = supabase.createClient(URL_SUPABASE, CLAVE_PUBLICA);
 
-let productos = [], pedidos = [], clientes = [], recompras = [], espera = [], presentaciones = [], componentes = [], respaldos = [], secciones = [], categorias = [];
+let productos = [], pedidos = [], clientes = [], recompras = [], espera = [], presentaciones = [], componentes = [], respaldos = [], secciones = [], categorias = [], ventas = [];
 let fotoLista = null;
 
 /* ---------------- acceso ---------------- */
@@ -324,7 +367,7 @@ function ver(id, boton){
 
 /* ---------------- carga ---------------- */
 async function cargarTodo(){
-  const [p, o, c, r, w, pr, cp, rs, sc, ct] = await Promise.all([
+  const [p, o, c, r, w, pr, cp, rs, sc, ct, vt] = await Promise.all([
     db.from('productos').select('*').order('linea').order('nombre'),
     db.from('pedidos').select('*, clientes(nombre,telefono,email), pedido_items(*)').order('creado_en',{ascending:false}).limit(200),
     db.from('clientes').select('*').order('creado_en',{ascending:false}).limit(400),
@@ -334,14 +377,16 @@ async function cargarTodo(){
     db.from('presentacion_componentes').select('*'),
     db.from('respaldos').select('creado_en,filas,resultado').order('creado_en',{ascending:false}).limit(1),
     db.from('secciones').select('*').order('orden'),
-    db.from('categorias').select('*').order('orden')
+    db.from('categorias').select('*').order('orden'),
+    db.from('v_items_vendidos').select('*').order('fecha',{ascending:false}).limit(8000)
   ]);
   productos = p.data || []; pedidos = o.data || [];
   clientes = c.data || []; recompras = r.data || []; espera = w.data || [];
   presentaciones = pr.data || []; componentes = cp.data || [];
   respaldos = rs.data || []; secciones = sc.data || []; categorias = ct.data || [];
+  ventas = vt.data || [];
   pintarResumen(); pintarInventario(); pintarPedidos(); pintarClientes(); pintarRecompras(); pintarEspera(); pintarPacks();
-  llenarSecciones(); pintarNuevos(); pintarSecciones();
+  llenarSecciones(); pintarNuevos(); pintarSecciones(); pintarReportes();
 }
 
 /* ---------------- resumen ---------------- */
@@ -404,6 +449,144 @@ function pintarResumen(){
 }
 
 
+
+
+/* ---------------- reportes ---------------- */
+const ESTADOS_VENDIDOS = ['pagado','enviado','entregado'];
+
+function rangoReporte(){
+  const hoy = new Date();
+  const f = document.getElementById('repPeriodo') ? document.getElementById('repPeriodo').value : 'mes';
+  const iso = d => d.toISOString().slice(0,10);
+  if(f === 'mes')  return { desde: iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), etiqueta: 'este mes' };
+  if(f === '30')   return { desde: iso(new Date(Date.now() - 30*86400000)), etiqueta: 'últimos 30 días' };
+  if(f === '90')   return { desde: iso(new Date(Date.now() - 90*86400000)), etiqueta: 'últimos 90 días' };
+  if(f === 'anio') return { desde: iso(new Date(hoy.getFullYear(), 0, 1)), etiqueta: 'este año' };
+  return { desde: '1900-01-01', etiqueta: 'desde el principio' };
+}
+
+function lineasDelReporte(){
+  const { desde } = rangoReporte();
+  const incluirPend = document.getElementById('repPendientes')
+    && document.getElementById('repPendientes').checked;
+  return ventas.filter(v =>
+    (v.fecha || '') >= desde &&
+    (ESTADOS_VENDIDOS.indexOf(v.estado) > -1 || (incluirPend && v.estado === 'pendiente')));
+}
+
+function barras(filas, unidad, tope){
+  if(!filas.length) return '<div class="vacio">Nada todavía en este periodo.</div>';
+  const max = Math.max.apply(null, filas.map(f => f.valor)) || 1;
+  return filas.slice(0, tope).map(f => {
+    const pct = Math.max(2, Math.round(f.valor / max * 100));
+    const txt = unidad === '$' ? pesos(f.valor) : f.valor + (f.valor === 1 ? ' pza' : ' pzas');
+    return `<div class="rank" title="${esc(f.nombre)} · ${esc(txt)}${f.extra ? ' · ' + esc(f.extra) : ''}">
+      <div class="rank-nom truncar">${esc(f.nombre)}</div>
+      <div class="rank-barra"><span style="width:${pct}%"></span></div>
+      <div class="rank-val">${esc(txt)}</div>
+    </div>`;
+  }).join('');
+}
+
+function pintarReportes(){
+  if(!document.getElementById('repTablero')) return;
+  const lineas = lineasDelReporte();
+  const { etiqueta } = rangoReporte();
+
+  /* --- piezas por SKU: cuenta también lo que salió dentro de un pack --- */
+  const piezas = {}, dinero = {}, pedidosVistos = {};
+  let totalPiezas = 0, totalDinero = 0;
+  lineas.forEach(v => {
+    if(v.sku){
+      if(!piezas[v.sku]) piezas[v.sku] = { nombre: v.producto || v.sku, valor: 0 };
+      piezas[v.sku].valor += (v.cantidad || 0);
+      totalPiezas += (v.cantidad || 0);
+    }
+    if((v.precio || 0) > 0){
+      const k = v.descripcion || v.producto || v.sku;
+      if(!dinero[k]) dinero[k] = { nombre: k, valor: 0 };
+      dinero[k].valor += (v.importe || 0);
+      totalDinero += (v.importe || 0);
+    }
+    pedidosVistos[v.pedido_id] = true;
+  });
+
+  const nPedidos = Object.keys(pedidosVistos).length;
+  const ticket = nPedidos ? Math.round(totalDinero / nPedidos) : 0;
+
+  document.getElementById('repTablero').innerHTML = `
+    <div class="dato"><b>${totalPiezas}</b><span>Piezas vendidas</span></div>
+    <div class="dato"><b>${pesos(totalDinero)}</b><span>Vendido ${esc(etiqueta)}</span></div>
+    <div class="dato"><b>${nPedidos}</b><span>Pedidos</span></div>
+    <div class="dato"><b>${pesos(ticket)}</b><span>Compra promedio</span></div>`;
+
+  const porPiezas = Object.values(piezas).sort((a,b) => b.valor - a.valor);
+  const porDinero = Object.values(dinero).sort((a,b) => b.valor - a.valor);
+  document.getElementById('repPiezas').innerHTML = barras(porPiezas, 'pzas', 15);
+  document.getElementById('repDinero').innerHTML = barras(porDinero, '$', 10);
+
+  /* --- se acabó y te lo siguen pidiendo --- */
+  const esperando = {};
+  espera.forEach(e => { const n = (e.producto || '').trim(); esperando[n] = (esperando[n] || 0) + 1; });
+  const agotados = productos
+    .filter(p => p.stock <= 0 && p.activo !== false)
+    .map(p => ({
+      nombre: p.nombre,
+      vendidas: (piezas[p.sku] || {}).valor || 0,
+      pidiendo: esperando[p.nombre] || 0
+    }))
+    .filter(p => p.vendidas > 0 || p.pidiendo > 0)
+    .sort((a,b) => (b.pidiendo - a.pidiendo) || (b.vendidas - a.vendidas));
+
+  document.getElementById('repAgotados').innerHTML = agotados.length
+    ? agotados.slice(0,12).map(p => `<div class="fila" style="padding:7px 0;border-top:1px solid #f0f3f8">
+        <div class="crece truncar" style="font-size:13.5px">${esc(p.nombre)}</div>
+        <div class="sub" style="text-align:right">
+          ${p.vendidas ? p.vendidas + ' vendidas · ' : ''}${
+          p.pidiendo ? '<b style="color:var(--rojo)">' + p.pidiendo + ' esperando</b>' : 'nadie en lista'}
+        </div></div>`).join('')
+    : '<div class="vacio">No tienes agotados con demanda. Bien ahí.</div>';
+
+  /* --- dinero detenido: con existencias y sin una sola venta --- */
+  const quietos = productos
+    .filter(p => p.stock > 0 && p.activo !== false && !(piezas[p.sku] || {}).valor)
+    .map(p => ({ nombre: p.nombre, stock: p.stock,
+                 valor: (p.precio_menudeo || 0) * p.stock }))
+    .sort((a,b) => b.valor - a.valor);
+  const detenido = quietos.reduce((s,p) => s + p.valor, 0);
+
+  document.getElementById('repQuietosTotal').textContent =
+    quietos.length + ' productos · ' + pesos(detenido) + ' parados';
+  document.getElementById('repQuietos').innerHTML = quietos.length
+    ? quietos.slice(0,12).map(p => `<div class="fila" style="padding:7px 0;border-top:1px solid #f0f3f8">
+        <div class="crece truncar" style="font-size:13.5px">${esc(p.nombre)}</div>
+        <div class="sub" style="text-align:right">${p.stock} pzas · ${pesos(p.valor)}</div>
+      </div>`).join('')
+    : '<div class="vacio">Todo lo que tienes en piso ha vendido al menos una pieza.</div>';
+}
+
+function exportarReporte(){
+  if(typeof XLSX === 'undefined'){ brindis('No se pudo cargar el exportador'); return; }
+  const lineas = lineasDelReporte();
+  const piezas = {};
+  lineas.forEach(v => {
+    if(!v.sku) return;
+    if(!piezas[v.sku]) piezas[v.sku] = { SKU:v.sku, Producto:v.producto || v.sku,
+      Línea:v.linea || '', Piezas:0, Ingresos:0 };
+    piezas[v.sku].Piezas += (v.cantidad || 0);
+    piezas[v.sku].Ingresos += (v.importe || 0);
+  });
+  const filas = Object.values(piezas).sort((a,b) => b.Piezas - a.Piezas);
+  filas.forEach(f => {
+    const p = productos.find(x => x.sku === f.SKU);
+    f['Existencia hoy'] = p ? p.stock : '';
+  });
+  const hoja = XLSX.utils.json_to_sheet(filas);
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, 'Ventas');
+  XLSX.writeFile(libro, 'ventas-' + new Date().toISOString().slice(0,10) + '.xlsx');
+  brindis('Reporte descargado');
+}
 
 /* ---------------- secciones y categorías ---------------- */
 const SEC_FIJAS = ['sascha','kat','katmas'];

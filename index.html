@@ -2774,12 +2774,12 @@
             document.getElementById('detAgregar').onclick = d.agotado ? null : function() {
                 const marcaFinal = d.marca || 'Saschafitness';
                 const nombreFinal = marcaFinal === 'Mayoreo' ? nombre + ' (Mayoreo)' : nombre;
-                if(typeof cabeEnStock === 'function' && !cabeEnStock(nombreFinal)){
+                if(typeof window.cabeEnStock === 'function' && !window.cabeEnStock(nombreFinal)){
                     if(typeof avisarTope === 'function') avisarTope();
                     else alert('Ya llevas en el carrito todas las piezas que tenemos de ese producto.');
                     return;
                 }
-                const precioFinal = (typeof precioVivo === 'function') ? precioVivo(nombreFinal, marcaFinal) : null;
+                const precioFinal = (typeof window.precioVivo === 'function') ? window.precioVivo(nombreFinal, marcaFinal) : null;
                 cart.push({ nombre: nombreFinal, precio: precioFinal != null ? precioFinal : d.precio, marca: marcaFinal, esMXN: true });
                 updateCart();
                 this.textContent = '✓ Agregado';
@@ -2812,7 +2812,9 @@
   /* Ponlo en false cuando termines de probar: deja de mostrar avisos en pantalla */
   const DEPURAR = false;
 
-  const bd = supabase.createClient(URL_SB, CLAVE_SB);
+  var bd = null;
+  try{ bd = supabase.createClient(URL_SB, CLAVE_SB); }
+  catch(e){ console.error('No se pudo conectar con la base; la tienda sigue con sus candados.', e); }
 
   /* Si falla la red, el pedido no se pierde: se guarda y se reintenta al volver */
   function guardarPendiente(datos){
@@ -2934,6 +2936,7 @@
   }
 
   function marcarAgotado(card){
+    marcarFicha(card, true);
     if(card.classList.contains('agotado')) return;
     card.classList.add('agotado');
 
@@ -2966,7 +2969,18 @@
     }
   }
 
+  /* que la ficha ampliada se entere de lo que ya sabe la tarjeta */
+  function marcarFicha(card, agotado){
+    try{
+      if(typeof DETALLES_PRODUCTO === 'undefined') return;
+      var n = (card.querySelector('.product-name') || {}).textContent || '';
+      n = n.trim();
+      if(DETALLES_PRODUCTO[n]) DETALLES_PRODUCTO[n].agotado = !!agotado;
+    }catch(e){}
+  }
+
   function marcarDisponible(card){
+    marcarFicha(card, false);
     if(!card.classList.contains('agotado')) return;
     card.classList.remove('agotado');
 
@@ -3279,9 +3293,15 @@
       if(m) return m[1];
     }
     const sec = card.closest('.section');
-    if(sec && sec.id === 'mayoreo') return 'Mayoreo';
-    return 'Saschafitness';
+    const id  = sec ? sec.id : '';
+    if(id === 'mayoreo') return 'Mayoreo';
+    if(id === 'sascha')  return 'Saschafitness';
+    if(id === 'katmas')  return 'Imperdibles';
+    if(id === 'kat')     return 'Recomendaciones de Sascha';
+    return MARCA_SECCION[id] || 'Recomendaciones de Sascha';
   }
+
+  window.precioVivo = precioVivo;     /* la usa la ficha ampliada, en otro ámbito */
 
   function precioDeTarjeta(card){
     /* un producto con SKU manda siempre por su fila en productos */
@@ -3342,6 +3362,7 @@
     return uso;
   }
 
+  window.cabeEnStock = cabeEnStock;   /* la usa la ficha ampliada, en otro ámbito */
   function cabeEnStock(nombre){
     const partes = skusDe(nombre);
     if(!partes.length) return true;          // no lo reconocemos: no estorbamos
@@ -3589,7 +3610,9 @@
     var m = '¡Hola! Soy ' + (perfil.nombre || '') + ' 👋\n';
     if(folio) m += 'Mi pedido: *' + folio + '*\n';
     m += listaProductos(corta);
-    m += 'Total: *$' + Number(total || 0).toLocaleString('es-MX') + ' MXN*\n';
+    var tot = Number(total || 0);
+    if(!tot && window.ultimoPedido) tot = Number(window.ultimoPedido.total || 0);
+    m += 'Total: *$' + tot.toLocaleString('es-MX') + ' MXN*\n';
     m += 'Pago: ' + metodo + '\n';
     if(typeof paymentMethod !== 'undefined' && paymentMethod === 'mercadopago'){
       if(typeof MERCADOPAGO_LINK !== 'undefined') m += '💳 ' + MERCADOPAGO_LINK + '\n';
@@ -3598,6 +3621,8 @@
       cuentasDelDia().forEach(function(b){
         m += '🏦 ' + b.banco + ' — ' + b.titular + '\n';
         if(b.clabe) m += 'CLABE: ' + b.clabe + '\n';
+        /* en HSBC muchas clientas transfieren por número de tarjeta */
+        if(b.banco === 'HSBC' && b.tarjeta) m += 'Tarjeta: ' + b.tarjeta + '\n';
       });
     }
     m += '\nEn cuanto pague les mando mi comprobante 📎';
@@ -3625,6 +3650,11 @@
   /* --- confirmación: el pedido ya quedó registrado --- */
   function mostrarFolio(folio, total){
     window.pedidoEnviado = true;
+    window.pedidoEnCurso = false;
+    window.ultimoFolio = folio || null;
+    soltarEnvio();                      /* la petición terminó: se puede pedir otra vez */
+    var btnPaso = document.getElementById('upEnviar');
+    if(btnPaso){ btnPaso.disabled = false; btnPaso.textContent = '📲 Enviar mi pedido por WhatsApp'; }
     var bank = document.getElementById('bankInfoContent');
     if(bank && esTransferencia()) bank.innerHTML = cuentasHTML();
     var viejo = document.getElementById('cajaFolio');
@@ -3641,11 +3671,15 @@
       'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">' +
         '<div style="background:#24478f; color:#fff; padding:22px; text-align:center;">' +
           '<div style="font-size:30px; line-height:1;">&#10003;</div>' +
-          '<div style="font-size:19px; font-weight:800; margin-top:8px;">Ya recibimos tu pedido</div>' +
+          '<div style="font-size:19px; font-weight:800; margin-top:8px;">' +
+            (folio ? 'Ya recibimos tu pedido' : 'Mándanos tu pedido por WhatsApp') + '</div>' +
           (folio ? '<div style="font-size:21px; font-weight:800; letter-spacing:1px; margin-top:10px; color:#a3d334;">' + folio + '</div>' : '') +
         '</div>' +
         '<div style="padding:20px 22px 6px; color:#12172a; font-size:15px; line-height:1.6;">' +
-          '<p style="margin:0 0 12px;">' + (nombre ? nombre + ', tu' : 'Tu') + ' pedido quedó registrado por <b>' + totalTxt + '</b>. Te apartamos tus productos.</p>' +
+          '<p style="margin:0 0 12px;">' + (folio
+              ? (nombre ? nombre + ', tu' : 'Tu') + ' pedido quedó registrado por <b>' + totalTxt + '</b>. Te apartamos tus productos.'
+              : (nombre ? nombre + ', tu' : 'Tu') + ' pedido es por <b>' + totalTxt + '</b>. Se nos fue la señal al guardarlo, '
+                + 'así que <b>mándanoslo por WhatsApp</b> para apartarte tus productos.') + '</p>' +
           '<div style="background:#f0fdf4; border:1px solid #bbf0cd; border-radius:10px; padding:12px 14px;' +
                'font-size:14px; line-height:1.55; color:#15502f;">' +
             (esTransferencia()
@@ -3667,13 +3701,17 @@
       '</div>';
     document.body.appendChild(c);
 
-    /* la pestaña que abrimos al tocar el botón ya puede ir a WhatsApp */
-    var yaAbrio = (typeof abrirWhatsApp === 'function') ? abrirWhatsApp(folio, total) : false;
-
     var b = document.getElementById('btnComprobante');
-    if(b){
-      if(yaAbrio) b.textContent = '📲 Abrir WhatsApp otra vez';
-      b.onclick = function(){ window.open(linkWhatsApp(folio, total), '_blank'); };
+    if(b) b.onclick = function(){ window.open(linkWhatsApp(folio, total), '_blank'); };
+
+    /* Esta misma pestaña se va a WhatsApp. No abrimos una nueva a propósito:
+       en el iPhone la pestaña de atrás se duerme y el pedido se quedaba colgado. */
+    window.pedidoEnCurso = false;
+    if(window.irAWhatsApp){
+      window.irAWhatsApp = false;
+      cerrarUltimoPaso();
+      var destino = linkWhatsApp(folio, total);
+      setTimeout(function(){ try{ location.href = destino; }catch(e){} }, 300);
     }
 
     /* el pedido ya quedó: vaciamos el carrito para que no se mande dos veces */
@@ -3685,6 +3723,7 @@
 
   /* --- un pedido por vez: evita el doble clic --- */
   var enviando = false, ultimoEnvio = 0, huellaPrevia = '';
+  function soltarEnvio(){ enviando = false; }
 
   function huellaDe(items, total){
     return items.map(function(i){ return i.nombre + 'x' + (i.cantidad||1); }).join('|') + '#' + total;
@@ -3763,10 +3802,25 @@
         /* mismo carrito, mismo total, en menos de un minuto: es doble clic */
         const huella = huellaDe(items, totalFinal);
         const ahora = Date.now();
-        if(enviando || (huella === huellaPrevia && ahora - ultimoEnvio < 60000)){
-          console.log('Pedido repetido ignorado');
-          return enviarOriginal.apply(this, arguments);
+        if(enviando){
+          console.log('Ya hay un pedido en camino; se ignora el toque repetido.');
+          return;                       /* nunca al original: abriría WhatsApp sin pedido */
         }
+        if(huella === huellaPrevia && ahora - ultimoEnvio < 60000 && window.ultimoFolio){
+          /* mismo carrito y mismo total que el pedido que acaba de salir:
+             no creamos otro, la llevamos de nuevo a ese mismo. */
+          console.log('Mismo pedido: se reabre WhatsApp en vez de duplicarlo.');
+          var repetido = window.ultimoFolio, totalRep = totalFinal;
+          if(window.irAWhatsApp){
+            window.irAWhatsApp = false;
+            setTimeout(function(){
+              try{ location.href = linkWhatsApp(repetido, totalRep); }catch(e){}
+            }, 150);
+          }
+          return;
+        }
+        /* ahora sí: pasó registro, stock, mínimo y el candado del doble clic */
+        window.pedidoEnCurso = true;
         enviando = true;
         huellaPrevia = huella;
         ultimoEnvio = ahora;
@@ -3778,7 +3832,23 @@
           p_descuento: descuento,
           p_metodo: (typeof paymentMethod !== 'undefined' ? paymentMethod : 'transferencia')
         };
+        if(!bd){                       /* sin base: el pedido se guarda para reintentar */
+          guardarPendiente(datos);
+          mostrarFolio(null, datos.p_total);
+          return enviarOriginal.apply(this, arguments);
+        }
+        var yaResolvio = false;
+        var cortar = setTimeout(function(){
+          if(yaResolvio) return;
+          yaResolvio = true;
+          console.warn('La base no contestó a tiempo; el pedido queda pendiente.');
+          guardarPendiente(datos);
+          mostrarFolio(null, datos.p_total);
+        }, 12000);
+
         bd.rpc('crear_pedido', datos).then(function(r){
+          if(yaResolvio) return;
+          yaResolvio = true; clearTimeout(cortar);
           if(r.error){
             console.error('Pedido NO guardado:', r.error);
             guardarPendiente(datos);
@@ -3791,6 +3861,8 @@
             if(DEPURAR) alert('Pedido guardado con folio ' + r.data);
           }
         }).catch(function(err){
+          if(yaResolvio) return;
+          yaResolvio = true; clearTimeout(cortar);
           console.error('Fallo de red al guardar:', err);
           guardarPendiente(datos);
           mostrarFolio(null, datos.p_total);
@@ -3799,13 +3871,14 @@
       }
     }catch(err){}
     /* el mensaje largo ya no se abre solo: la clienta decide desde la confirmación */
-    var abrirReal = window.open;
+    if(!window.__abrirReal) window.__abrirReal = window.open;
+    var abrirReal = window.__abrirReal;
     window.open = function(u){
       if(typeof u === 'string' && u.indexOf('wa.me') >= 0){ window.ultimoLinkWA = u; return null; }
       return abrirReal.apply(window, arguments);
     };
     try { return enviarOriginal.apply(this, arguments); }
-    finally { setTimeout(function(){ window.open = abrirReal; }, 50); }
+    finally { setTimeout(function(){ window.open = window.__abrirReal; }, 50); }
   };
 
   function arrancar(){
@@ -4273,46 +4346,27 @@
 
   window.enviarDesdeUltimoPaso = function(){
     var b = document.getElementById('upEnviar');
-    b.disabled = true; b.textContent = 'Abriendo WhatsApp…';
+    if(!b || b.disabled) return;
+    b.disabled = true;
+    b.textContent = 'Preparando tu pedido…';
 
-    /* La pestaña se abre AHORA, dentro del toque de la clienta: si se abriera
-       después de guardar el pedido, el navegador la bloquearía por ser emergente. */
-    window.ventanaWA = null;
-    try{ window.ventanaWA = window.open('', '_blank'); }catch(e){}
-    if(window.ventanaWA){
-      try{
-        window.ventanaWA.document.write(
-          '<!doctype html><meta charset="utf-8">' +
-          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-          '<title>Abriendo WhatsApp…</title>' +
-          '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#24478f;' +
-          'color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:24px}</style>' +
-          '<div><div style="font-size:40px">📲</div>' +
-          '<p style="font-size:18px;font-weight:700;margin:12px 0 4px">Preparando tu pedido…</p>' +
-          '<p style="opacity:.8;margin:0">En un momento se abre WhatsApp.</p></div>');
-      }catch(e){}
-      /* si algo tardara demasiado, igual la mandamos a WhatsApp */
-      window.relojWA = setTimeout(function(){ abrirWhatsApp(null, 0); }, 7000);
-    }
+    window.pedidoEnCurso = false;
+    window.irAWhatsApp  = true;     /* sólo este camino manda sola a WhatsApp */
 
-    cerrarUltimoPaso();
     setTimeout(function(){
       try{ submitOrder({ preventDefault: function(){}, target: null }); }catch(e){}
-      b.disabled = false; b.textContent = '📲 Enviar mi pedido por WhatsApp';
-    }, 60);
-  };
 
-  /* lleva la pestaña ya abierta hasta WhatsApp; si no hay pestaña, la abre */
-  window.abrirWhatsApp = function(folio, total){
-    if(window.relojWA){ clearTimeout(window.relojWA); window.relojWA = null; }
-    if(typeof window.linkWhatsApp !== 'function') return false;
-    var url = window.linkWhatsApp(folio, total);
-    var w = window.ventanaWA;
-    window.ventanaWA = null;
-    if(w && !w.closed){
-      try{ w.location.replace(url); return true; }catch(e){}
-    }
-    return false;
+      /* Si el pedido no arrancó —falta registro, se acabó el stock, no llega al
+         mínimo de mayoreo— no se manda nada a WhatsApp y el botón vuelve en sí. */
+      setTimeout(function(){
+        if(!window.pedidoEnCurso){
+          window.irAWhatsApp = false;
+          b.disabled = false;
+          b.textContent = '📲 Enviar mi pedido por WhatsApp';
+          cerrarUltimoPaso();
+        }
+      }, 500);
+    }, 50);
   };
 
   document.addEventListener('keydown', function(e){

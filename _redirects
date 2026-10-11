@@ -1,0 +1,3 @@
+# El panel siempre se llama admin.html; esta regla hace que /panel-kat/ lo abra.
+/panel-kat/     /panel-kat/admin.html     200
+/panel-kat      /panel-kat/admin.html     200
