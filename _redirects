@@ -1,3 +1,9 @@
 # El panel siempre se llama admin.html; esta regla hace que /panel-kat/ lo abra.
 /panel-kat/     /panel-kat/admin.html     200
 /panel-kat      /panel-kat/admin.html     200
+
+# Red de seguridad para los links de producto.
+# Netlify sirve primero la página real de /p/<producto>/ (la que lleva foto y
+# título para WhatsApp). Si esa carpeta todavía no está subida, en vez de
+# mostrar "Page not found" manda a la tienda abierta en ese producto.
+/p/*            /?p=:splat                302

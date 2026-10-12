@@ -271,6 +271,7 @@
 <div class="section" id="registro">
 <h2 class="section-title">👤 Mi Registro - Datos del Cliente</h2>
 <div class="form-section">
+<div id="estadoRegistro"></div>
 <div class="success-msg" id="successMsg">✓ ¡Datos guardados correctamente!</div>
 <div class="error-msg" id="errorMsg">⚠️ Por favor completa todos los campos</div>
 <form onsubmit="saveProfile(event)">
@@ -807,7 +808,7 @@
 <div style="background: #eef2fa; border: 2px solid #c8d5ee; border-left: 6px solid #24478f; border-radius: 10px; padding: 14px 18px; margin: 0 0 18px; text-align: center;"><div style="font-weight: 800; color: #24478f; font-size: 1.05em;">💼 PRECIOS DE MAYOREO · 🚚 ENVÍO GRATIS SIEMPRE</div><div style="font-size: 0.92em; color: #444; margin-top: 6px;">Pedido mínimo: <strong>5 piezas</strong> de esta sección (puedes combinar productos y sabores).</div><div style="font-size: 0.85em; color: #25d366; font-weight: 700; margin-top: 4px;">Además, 5% de descuento extra pagando por transferencia</div><div style="background: #fff3cd; border: 2px solid #f0c14b; border-radius: 8px; padding: 9px 14px; margin-top: 10px; text-align: center; font-weight: 800; color: #7a5c00; font-size: 0.95em; letter-spacing: 0.3px;">📌 NOTA IMPORTANTE: los envíos salen <u>al día siguiente hábil</u> de confirmado tu pago</div><div style="font-size: 0.8em; color: #777; margin-top: 4px; font-style: italic;">*No aplica zonas extendidas, tendrá un costo adicional.</div></div>
 <h3 class="category-title">🏆 Suplementos Especiales</h3>
 <div class="products-grid">
-<div class="product-card" data-sku="FIT9">
+<div class="product-card" data-sku="FIT9" data-link="fit-9-mayoreo" id="p-fit-9-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('FIT 9', 1207, 'Mayoreo')" title="Ver detalles"><img alt="FIT 9" loading="lazy" src="imagenes/fit-9.webp"/></div>
 <div class="product-info">
 <div class="product-name">FIT 9</div>
@@ -816,7 +817,7 @@
 <button class="add-btn" onclick="addToCart('FIT 9 (Mayoreo)', 1207, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="RESTORE">
+<div class="product-card" data-sku="RESTORE" data-link="restore-mayoreo" id="p-restore-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('RESTORE', 1207, 'Mayoreo')" title="Ver detalles"><img alt="RESTORE" loading="lazy" src="imagenes/restore.webp"/></div>
 <div class="product-info">
 <div class="product-name">RESTORE</div>
@@ -825,7 +826,7 @@
 <button class="add-btn" onclick="addToCart('RESTORE (Mayoreo)', 1207, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="BLISS">
+<div class="product-card" data-sku="BLISS" data-link="bliss-mayoreo" id="p-bliss-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('BLISS', 1239, 'Mayoreo')" title="Ver detalles"><img alt="BLISS" loading="lazy" src="imagenes/bliss.webp"/></div>
 <div class="product-info">
 <div class="product-name">BLISS</div>
@@ -837,7 +838,7 @@
 </div>
 <h3 class="category-title">🥤 Proteína Aislada e Hidrolizada (25g por porción)</h3>
 <div class="products-grid">
-<div class="product-card agotado" data-sku="PROT-NATURA">
+<div class="product-card agotado" data-sku="PROT-NATURA" data-link="proteina-natural-mayoreo" id="p-proteina-natural-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Natural', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Natural" loading="lazy" src="imagenes/proteina-natural.webp"/></div>
 <div class="product-info">
@@ -848,7 +849,7 @@
 <button class="add-btn" onclick="avisarme('Proteína Natural (Mayoreo)')" style="background: #25d366; color: white; margin-top: 6px; font-size: 0.86em;">🔔 Avísame cuando llegue</button>
 </div>
 </div>
-<div class="product-card" data-sku="PROT-CHOCOL">
+<div class="product-card" data-sku="PROT-CHOCOL" data-link="proteina-chocolate-mayoreo" id="p-proteina-chocolate-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Chocolate', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Chocolate" loading="lazy" src="imagenes/proteina-chocolate.webp"/></div>
 <div class="product-info">
 <div class="product-name">Proteína Chocolate</div>
@@ -857,7 +858,7 @@
 <button class="add-btn" onclick="addToCart('Proteína Chocolate (Mayoreo)', 1522, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card agotado" data-sku="PROT-FRESA">
+<div class="product-card agotado" data-sku="PROT-FRESA" data-link="proteina-fresa-mayoreo" id="p-proteina-fresa-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Fresa', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Fresa" loading="lazy" src="imagenes/proteina-fresa.webp"/></div>
 <div class="product-info">
@@ -868,7 +869,7 @@
 <button class="add-btn" onclick="avisarme('Proteína Fresa (Mayoreo)')" style="background: #25d366; color: white; margin-top: 6px; font-size: 0.86em;">🔔 Avísame cuando llegue</button>
 </div>
 </div>
-<div class="product-card agotado" data-sku="PROT-VAINIL">
+<div class="product-card agotado" data-sku="PROT-VAINIL" data-link="proteina-vainilla-mayoreo" id="p-proteina-vainilla-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Vainilla', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Vainilla" loading="lazy" src="imagenes/proteina-vainilla.webp"/></div>
 <div class="product-info">
@@ -879,7 +880,7 @@
 <button class="add-btn" onclick="avisarme('Proteína Vainilla (Mayoreo)')" style="background: #25d366; color: white; margin-top: 6px; font-size: 0.86em;">🔔 Avísame cuando llegue</button>
 </div>
 </div>
-<div class="product-card" data-sku="PROT-CACAHU">
+<div class="product-card" data-sku="PROT-CACAHU" data-link="proteina-cacahuate-mayoreo" id="p-proteina-cacahuate-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Cacahuate', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Cacahuate" loading="lazy" src="imagenes/proteina-cacahuate.webp"/></div>
 <div class="product-info">
 <div class="product-name">Proteína Cacahuate</div>
@@ -888,7 +889,7 @@
 <button class="add-btn" onclick="addToCart('Proteína Cacahuate (Mayoreo)', 1522, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="PROT-CARAME">
+<div class="product-card" data-sku="PROT-CARAME" data-link="proteina-caramelo-mayoreo" id="p-proteina-caramelo-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Caramelo', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Caramelo" loading="lazy" src="imagenes/proteina-caramelo.webp"/></div>
 <div class="product-info">
 <div class="product-name">Proteína Caramelo</div>
@@ -897,7 +898,7 @@
 <button class="add-btn" onclick="addToCart('Proteína Caramelo (Mayoreo)', 1522, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="PROT-COCO">
+<div class="product-card" data-sku="PROT-COCO" data-link="proteina-coco-mayoreo" id="p-proteina-coco-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Coco', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Coco" loading="lazy" src="imagenes/proteina-coco.webp"/></div>
 <div class="product-info">
 <div class="product-name">Proteína Coco</div>
@@ -906,7 +907,7 @@
 <button class="add-btn" onclick="addToCart('Proteína Coco (Mayoreo)', 1522, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="PROT-HORCHA">
+<div class="product-card" data-sku="PROT-HORCHA" data-link="proteina-horchata-mayoreo" id="p-proteina-horchata-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Horchata', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Horchata" loading="lazy" src="imagenes/proteina-horchata.webp"/></div>
 <div class="product-info">
 <div class="product-name">Proteína Horchata</div>
@@ -915,7 +916,7 @@
 <button class="add-btn" onclick="addToCart('Proteína Horchata (Mayoreo)', 1522, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="PROT-COOKIE">
+<div class="product-card" data-sku="PROT-COOKIE" data-link="proteina-cookies-y-cream-mayoreo" id="p-proteina-cookies-y-cream-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Proteína Cookies &amp; Cream', 1522, 'Mayoreo')" title="Ver detalles"><img alt="Proteína Cookies &amp; Cream" loading="lazy" src="imagenes/proteina-cookies-cream.webp"/></div>
 <div class="product-info">
 <div class="product-name">Proteína Cookies &amp; Cream</div>
@@ -927,7 +928,7 @@
 </div>
 <h3 class="category-title">💪 BCAA's - Aminoácidos Ramificados</h3>
 <div class="products-grid">
-<div class="product-card" data-sku="BCAA-SANDIA">
+<div class="product-card" data-sku="BCAA-SANDIA" data-link="bcaa-sandia-mayoreo" id="p-bcaa-sandia-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('BCAA Sandía', 1134, 'Mayoreo')" title="Ver detalles"><img alt="BCAA Sandía" loading="lazy" src="imagenes/bcaa-sandia.webp"/></div>
 <div class="product-info">
 <div class="product-name">BCAA Sandía</div>
@@ -936,7 +937,7 @@
 <button class="add-btn" onclick="addToCart('BCAA Sandía (Mayoreo)', 1134, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card agotado" data-sku="BCAA-PINACO">
+<div class="product-card agotado" data-sku="BCAA-PINACO" data-link="bcaa-pina-colada-mayoreo" id="p-bcaa-pina-colada-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('BCAA Piña Colada', 1134, 'Mayoreo')" title="Ver detalles"><img alt="BCAA Piña Colada" loading="lazy" src="imagenes/bcaa-pina-colada.webp"/></div>
 <div class="product-info">
@@ -947,7 +948,7 @@
 <button class="add-btn" onclick="avisarme('BCAA Piña Colada (Mayoreo)')" style="background: #25d366; color: white; margin-top: 6px; font-size: 0.86em;">🔔 Avísame cuando llegue</button>
 </div>
 </div>
-<div class="product-card agotado" data-sku="BCAA-MANGO">
+<div class="product-card agotado" data-sku="BCAA-MANGO" data-link="bcaa-mango-mayoreo" id="p-bcaa-mango-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('BCAA Mango', 1134, 'Mayoreo')" title="Ver detalles"><img alt="BCAA Mango" loading="lazy" src="imagenes/bcaa-mango.webp"/></div>
 <div class="product-info">
@@ -958,7 +959,7 @@
 <button class="add-btn" onclick="avisarme('BCAA Mango (Mayoreo)')" style="background: #25d366; color: white; margin-top: 6px; font-size: 0.86em;">🔔 Avísame cuando llegue</button>
 </div>
 </div>
-<div class="product-card agotado" data-sku="BCAA-UVA">
+<div class="product-card agotado" data-sku="BCAA-UVA" data-link="bcaa-uva-mayoreo" id="p-bcaa-uva-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('BCAA Uva', 1134, 'Mayoreo')" title="Ver detalles"><img alt="BCAA Uva" loading="lazy" src="imagenes/bcaa-uva.webp"/></div>
 <div class="product-info">
@@ -969,7 +970,7 @@
 <button class="add-btn" onclick="avisarme('BCAA Uva (Mayoreo)')" style="background: #25d366; color: white; margin-top: 6px; font-size: 0.86em;">🔔 Avísame cuando llegue</button>
 </div>
 </div>
-<div class="product-card agotado" data-sku="BCAA-LEMONL">
+<div class="product-card agotado" data-sku="BCAA-LEMONL" data-link="bcaa-lemon-lime-mayoreo" id="p-bcaa-lemon-lime-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('BCAA Lemon Lime', 1134, 'Mayoreo')" title="Ver detalles"><img alt="BCAA Lemon Lime" loading="lazy" src="imagenes/bcaa-lemon-lime.webp"/></div>
 <div class="product-info">
@@ -980,7 +981,7 @@
 <button class="add-btn" onclick="avisarme('BCAA Lemon Lime (Mayoreo)')" style="background: #25d366; color: white; margin-top: 6px; font-size: 0.86em;">🔔 Avísame cuando llegue</button>
 </div>
 </div>
-<div class="product-card agotado" data-sku="BCAA-PINA">
+<div class="product-card agotado" data-sku="BCAA-PINA" data-link="bcaa-pina-mayoreo" id="p-bcaa-pina-mayoreo">
 <div class="agotado-badge">AGOTADO</div>
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('BCAA Piña', 1134, 'Mayoreo')" title="Ver detalles"><img alt="BCAA Piña" loading="lazy" src="imagenes/bcaa-pina.webp"/></div>
 <div class="product-info">
@@ -994,7 +995,7 @@
 </div>
 <h3 class="category-title">✨ Colágeno Hidrolizado</h3>
 <div class="products-grid">
-<div class="product-card" data-sku="COL-FRESA">
+<div class="product-card" data-sku="COL-FRESA" data-link="colageno-fresa-mayoreo" id="p-colageno-fresa-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Colágeno Fresa', 1197, 'Mayoreo')" title="Ver detalles"><img alt="Colágeno Fresa" loading="lazy" src="imagenes/colageno-fresa.webp"/></div>
 <div class="product-info">
 <div class="product-name">Colágeno Fresa</div>
@@ -1003,7 +1004,7 @@
 <button class="add-btn" onclick="addToCart('Colágeno Fresa (Mayoreo)', 1197, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="COL-CHOCOL">
+<div class="product-card" data-sku="COL-CHOCOL" data-link="colageno-chocolate-mayoreo" id="p-colageno-chocolate-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Colágeno Chocolate', 1197, 'Mayoreo')" title="Ver detalles"><img alt="Colágeno Chocolate" loading="lazy" src="imagenes/colageno-chocolate.webp"/></div>
 <div class="product-info">
 <div class="product-name">Colágeno Chocolate</div>
@@ -1012,7 +1013,7 @@
 <button class="add-btn" onclick="addToCart('Colágeno Chocolate (Mayoreo)', 1197, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="COL-CARAME">
+<div class="product-card" data-sku="COL-CARAME" data-link="colageno-caramelo-mayoreo" id="p-colageno-caramelo-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Colágeno Caramelo', 1197, 'Mayoreo')" title="Ver detalles"><img alt="Colágeno Caramelo" loading="lazy" src="imagenes/colageno-caramelo.webp"/></div>
 <div class="product-info">
 <div class="product-name">Colágeno Caramelo</div>
@@ -1021,7 +1022,7 @@
 <button class="add-btn" onclick="addToCart('Colágeno Caramelo (Mayoreo)', 1197, 'Mayoreo', true)">+ Agregar</button>
 </div>
 </div>
-<div class="product-card" data-sku="COL-SINSAB">
+<div class="product-card" data-sku="COL-SINSAB" data-link="colageno-sin-sabor-mayoreo" id="p-colageno-sin-sabor-mayoreo">
 <div class="product-image sascha producto-clicable" onclick="abrirDetalle('Colágeno Sin Sabor', 1197, 'Mayoreo')" title="Ver detalles"><img alt="Colágeno Sin Sabor" loading="lazy" src="imagenes/colageno-sin-sabor.webp"/></div>
 <div class="product-info">
 <div class="product-name">Colágeno Sin Sabor</div>
@@ -2128,9 +2129,11 @@
             }
 
             localStorage.setItem('userProfile', JSON.stringify(profile));
-            showMsg('successMsg', '✓ ¡Datos guardados correctamente!');
             loadProfile();
-            setTimeout(() => { document.getElementById('successMsg').style.display = 'none'; }, 3000);
+            if(typeof pintarEstadoRegistro === 'function') pintarEstadoRegistro();
+            if(typeof mostrarRegistroListo === 'function') mostrarRegistroListo();
+            else { showMsg('successMsg', '✓ ¡Datos guardados correctamente!');
+                   setTimeout(() => { document.getElementById('successMsg').style.display = 'none'; }, 3000); }
         }
 
         function loadProfile() {
@@ -3234,6 +3237,16 @@
     return d;
   }
 
+  /* ¿esta tarjeta ya está escrita en esa sección? Se revisa por SKU —que no
+     cambia nunca— y de paso por el id, para no duplicar nada. */
+  function yaDibujado(p, seccion){
+    const slug = slugDe(p.nombre) + (seccion === 'mayoreo' ? '-mayoreo' : '');
+    if(document.getElementById('p-' + slug)) return true;
+    if(!p.sku) return false;
+    const sec = document.getElementById(seccion);
+    return !!(sec && sec.querySelector('.product-card[data-sku="' + p.sku + '"]'));
+  }
+
   function dibujarNuevos(filas){
     filas.forEach(function(p){
       if(!p.seccion) return;                      /* ya viene escrito en la página */
@@ -3246,11 +3259,11 @@
         };
       }
       if(p.activo === false) return;
-      if(!document.getElementById('p-' + slugDe(p.nombre))){
+      if(!yaDibujado(p, p.seccion)){
         const g = rejillaDe(p.seccion, p.categoria);
         if(g) g.appendChild(tarjetaNueva(p, p.seccion));
       }
-      if(p.en_mayoreo && !document.getElementById('p-' + slugDe(p.nombre) + '-mayoreo')){
+      if(p.en_mayoreo && !yaDibujado(p, 'mayoreo')){
         const g = rejillaDe('mayoreo', p.categoria);
         if(g) g.appendChild(tarjetaNueva(p, 'mayoreo'));
       }
@@ -3472,6 +3485,7 @@
     ['estado',      'Estado']
   ];
 
+  window.revisarPerfil = revisarPerfil;   /* la usa el letrero del registro */
   function revisarPerfil(){
     let perfil = null;
     try{ perfil = JSON.parse(localStorage.getItem('userProfile') || 'null'); }catch(e){}
@@ -3497,6 +3511,7 @@
   }
 
   function exigirRegistro(faltan){
+    if(typeof window.pintarEstadoRegistro === 'function') window.pintarEstadoRegistro();
     const aviso = document.getElementById('sinRegistroAviso');
     if(aviso) aviso.style.display = 'block';
     if(typeof showSection === 'function') setTimeout(function(){ showSection('registro'); }, 50);
@@ -4032,7 +4047,9 @@
   function objetivo(){
     var q = new URLSearchParams(location.search).get('p');
     if(!q && location.hash.indexOf('#p=') === 0) q = location.hash.slice(3);
-    return q ? decodeURIComponent(q) : null;
+    if(!q) return null;
+    /* aguanta diagonales de sobra: /p/fit-9-mayoreo/ llega como "fit-9-mayoreo/" */
+    return decodeURIComponent(q).replace(/^\/+|\/+$/g, '').trim() || null;
   }
   function ir(){
     var s = objetivo(); if(!s) return;
@@ -4372,6 +4389,113 @@
   document.addEventListener('keydown', function(e){
     if(e.key === 'Escape') cerrarUltimoPaso();
   });
+})();
+</script>
+
+
+<!-- ================== REGISTRO COMPLETO ================== -->
+<div id="registroListo" onclick="if(event.target===this) cerrarRegistroListo()">
+  <div class="rl-caja">
+    <div class="rl-palomita">✓</div>
+    <div class="rl-titulo">Registro completo</div>
+    <div class="rl-sub" id="rlSub"></div>
+    <div class="rl-datos" id="rlDatos"></div>
+    <button class="rl-boton" id="rlSeguir" onclick="seguirDesdeRegistro()"></button>
+    <button class="rl-revisar" onclick="cerrarRegistroListo()">Revisar mis datos</button>
+    <div class="rl-pie">Tus datos quedan guardados en este teléfono. No tendrás que volver a escribirlos.</div>
+  </div>
+</div>
+<style>
+#registroListo{ position:fixed; inset:0; z-index:10000; display:none;
+  background:rgba(10,14,26,.78); padding:18px; overflow-y:auto; }
+#registroListo.abierto{ display:flex; align-items:center; justify-content:center; }
+.rl-caja{ background:#fff; border-radius:18px; max-width:420px; width:100%;
+  padding:26px 22px 20px; text-align:center; box-shadow:0 18px 50px rgba(0,0,0,.35); }
+.rl-palomita{ width:66px; height:66px; margin:0 auto 12px; border-radius:50%;
+  background:#e7f5ec; color:#1b7a3d; font-size:36px; line-height:66px; font-weight:800; }
+.rl-titulo{ color:#1b7a3d; font-weight:800; font-size:1.42em; }
+.rl-sub{ color:#12172a; font-size:1em; margin-top:6px; }
+.rl-datos{ background:#f5f7fb; border-radius:12px; padding:13px 15px; margin:16px 0 18px;
+  text-align:left; font-size:13.5px; line-height:1.7; color:#3d4559; }
+.rl-boton{ width:100%; background:linear-gradient(135deg,#25d366,#128c7e); color:#fff; border:0;
+  border-radius:12px; padding:16px; font-size:1.02em; font-weight:800; letter-spacing:.3px;
+  text-transform:uppercase; cursor:pointer; box-shadow:0 6px 18px rgba(37,211,102,.35); }
+.rl-revisar{ display:block; width:100%; background:none; border:0; color:#7b8398;
+  font-size:.92em; margin-top:13px; cursor:pointer; text-decoration:underline; }
+.rl-pie{ color:#8b93a4; font-size:.78em; margin-top:14px; line-height:1.5;
+  border-top:1px solid #eef1f7; padding-top:12px; }
+/* letrero fijo del estado del registro */
+.reg-estado{ border-radius:12px; padding:13px 16px; margin-bottom:14px; font-size:.95em; line-height:1.5; }
+.reg-estado.bien{ background:#e7f5ec; border:2px solid #9bd3b2; color:#15502f; }
+.reg-estado.falta{ background:#fff7e6; border:2px solid #f0c98b; color:#7a5200; }
+.reg-estado b{ display:block; font-size:1.05em; margin-bottom:2px; }
+</style>
+<script>
+(function(){
+  function perfil(){
+    try{ return JSON.parse(localStorage.getItem('userProfile') || 'null'); }catch(e){ return null; }
+  }
+
+  window.pintarEstadoRegistro = function(){
+    var caja = document.getElementById('estadoRegistro');
+    if(!caja) return;
+    var p = perfil();
+    if(!p){
+      caja.className = 'reg-estado falta';
+      caja.innerHTML = '<b>Todavía no tienes registro</b>' +
+        'Llena tus datos una vez y no vuelves a escribirlos. Sin esto no podemos enviarte el pedido.';
+      return;
+    }
+    var rev = (typeof window.revisarPerfil === 'function') ? window.revisarPerfil() : { ok:true, faltan:[] };
+    if(rev.ok){
+      caja.className = 'reg-estado bien';
+      caja.innerHTML = '<b>✓ Tu registro está completo</b>' +
+        'Ya puedes enviar tus pedidos. Si te mudas o cambias de teléfono, actualiza aquí y guarda.';
+    } else {
+      caja.className = 'reg-estado falta';
+      caja.innerHTML = '<b>Te ' + (rev.faltan.length === 1 ? 'falta 1 dato' : 'faltan ' + rev.faltan.length + ' datos') + '</b>' +
+        rev.faltan.join(', ') + '.';
+    }
+  };
+
+  window.mostrarRegistroListo = function(){
+    var p = perfil(); if(!p) return;
+    var nombre = (p.nombre || '').split(' ')[0];
+    document.getElementById('rlSub').textContent =
+      (nombre ? nombre + ', ya' : 'Ya') + ' puedes enviar tus pedidos.';
+    var d = '<div>📱 ' + (p.telefono || '') + '</div>';
+    if(p.email) d += '<div>📧 ' + p.email + '</div>';
+    if(p.calle) d += '<div>🏠 ' + p.calle + ', Col. ' + (p.colonia || '') + ', C.P. ' + (p.cp || '') + '</div>';
+    if(p.ciudad) d += '<div>📍 ' + p.ciudad + ', ' + (p.estado || '') + '</div>';
+    if(p.entrecalles) d += '<div>↔️ Entre ' + p.entrecalles + '</div>';
+    document.getElementById('rlDatos').innerHTML = d;
+
+    var hayCarrito = (typeof cart !== 'undefined' && cart.length > 0);
+    document.getElementById('rlSeguir').textContent = hayCarrito ? '🛒 Ir a mi pedido' : 'Ver los productos';
+
+    document.getElementById('registroListo').classList.add('abierto');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.cerrarRegistroListo = function(){
+    var o = document.getElementById('registroListo');
+    if(o) o.classList.remove('abierto');
+    document.body.style.overflow = '';
+  };
+
+  window.seguirDesdeRegistro = function(){
+    var hayCarrito = (typeof cart !== 'undefined' && cart.length > 0);
+    cerrarRegistroListo();
+    if(typeof showSection === 'function') showSection(hayCarrito ? 'checkout' : 'sascha');
+  };
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') cerrarRegistroListo();
+  });
+
+  function arrancar(){ setTimeout(window.pintarEstadoRegistro, 150); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
+  else arrancar();
 })();
 </script>
 
