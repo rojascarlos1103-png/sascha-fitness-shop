@@ -2388,7 +2388,7 @@
         // 6 cuentas: 3 de Carlos y 3 de Katerine
         const CTAS = {
             carlosNU:  { banco: 'NU',     titular: 'Carlos Rojas Valadez',  cuenta: '00013541588',      clabe: '638180000135415881', tarjeta: '' },
-            carlosHS:  { banco: 'HSBC',   titular: 'Carlos Rojas Valadez',  cuenta: '6568413699',       clabe: '021180065684136991', tarjeta: '' },
+            carlosHS:  { banco: 'HSBC',   titular: 'Carlos Rojas Valadez',  cuenta: '6568413699',       clabe: '021180065684136991', tarjeta: '4213168059027771' },
             carlosAZ:  { banco: 'AZTECA', titular: 'Carlos Rojas Valadez',  cuenta: '5263540131153039', clabe: '127180013007707811', tarjeta: '5263540131153039' },
             katNU:     { banco: 'NU',     titular: 'Katerine Tamariz Jains', cuenta: '00015826737',      clabe: '638180000158267375', tarjeta: '' },
             katHS:     { banco: 'HSBC',   titular: 'Katerine Tamariz Jains', cuenta: '6568414499',       clabe: '021180065684144996', tarjeta: '4213166175751134' },
@@ -3636,8 +3636,10 @@
       cuentasDelDia().forEach(function(b){
         m += '🏦 ' + b.banco + ' — ' + b.titular + '\n';
         if(b.clabe) m += 'CLABE: ' + b.clabe + '\n';
-        /* en HSBC muchas clientas transfieren por número de tarjeta */
-        if(b.banco === 'HSBC' && b.tarjeta) m += 'Tarjeta: ' + b.tarjeta + '\n';
+        /* en HSBC muchas clientas transfieren por número de tarjeta.
+           Se manda en bloques de 4 para que sea más fácil de teclear. */
+        if(b.banco === 'HSBC' && b.tarjeta)
+          m += 'Tarjeta: ' + String(b.tarjeta).replace(/\D/g,'').replace(/(.{4})(?=.)/g, '$1 ') + '\n';
       });
     }
     m += '\nEn cuanto pague les mando mi comprobante 📎';
