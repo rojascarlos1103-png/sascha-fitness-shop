@@ -1,3 +1,8 @@
 # El panel siempre se llama admin.html; esta regla hace que /panel-kat/ lo abra.
 /panel-kat/     /panel-kat/admin.html     200
 /panel-kat      /panel-kat/admin.html     200
+
+# Red de seguridad: si una página de producto no estuviera subida, en vez de
+# mostrar "Page not found" abre la tienda en ese producto. Usa # y no ?, para
+# que el servidor no tenga que estrenar una dirección distinta cada vez.
+/p/*            /#p=:splat                302

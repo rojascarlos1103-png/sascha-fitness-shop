@@ -126,6 +126,7 @@ section{display:none} section.on{display:block}
   <button onclick="ver('inventario',this)">Inventario</button>
   <button onclick="ver('productos',this)">Productos nuevos</button>
   <button onclick="ver('pedidos',this)">Pedidos</button>
+  <button onclick="ver('carritos',this)">Carritos</button>
   <button onclick="ver('reportes',this)">Qué se vende</button>
   <button onclick="ver('clientes',this)">Clientes</button>
   <button onclick="ver('recompras',this)">Recompras</button>
@@ -235,6 +236,25 @@ section{display:none} section.on{display:block}
     <div id="listaPedidos"></div>
   </section>
 
+  <section id="carritos">
+    <div class="tarjeta" style="background:#f6f8fd">
+      <b>Carritos que se quedaron a medias</b>
+      <div class="sub" style="margin-top:4px">
+        Llegaron a Confirmar Pedido y no lo mandaron. Aparecen a las 2 horas, por si
+        nada más se levantaron por un café. Si después compran, desaparecen solos.
+      </div>
+    </div>
+    <div class="barra">
+      <input id="buscarCarrito" placeholder="Buscar por nombre o teléfono" oninput="pintarCarritos()">
+      <select id="filtroCarrito" onchange="pintarCarritos()" style="width:auto">
+        <option value="contacto">Con teléfono</option>
+        <option value="">Todos</option>
+        <option value="pendiente">Sin atender</option>
+      </select>
+    </div>
+    <div id="listaCarritos"></div>
+  </section>
+
   <section id="reportes">
     <div class="barra">
       <select id="repPeriodo" onchange="pintarReportes()" style="width:auto">
@@ -318,7 +338,7 @@ const WHATSAPP = '5215512345678'; // ← pon aquí tu número, con 52 y sin sign
 
 const db = supabase.createClient(URL_SUPABASE, CLAVE_PUBLICA);
 
-let productos = [], pedidos = [], clientes = [], recompras = [], espera = [], presentaciones = [], componentes = [], respaldos = [], secciones = [], categorias = [], ventas = [];
+let productos = [], pedidos = [], clientes = [], recompras = [], espera = [], presentaciones = [], componentes = [], respaldos = [], secciones = [], categorias = [], ventas = [], carritos = [];
 let fotoLista = null;
 
 /* ---------------- acceso ---------------- */
@@ -367,7 +387,7 @@ function ver(id, boton){
 
 /* ---------------- carga ---------------- */
 async function cargarTodo(){
-  const [p, o, c, r, w, pr, cp, rs, sc, ct, vt] = await Promise.all([
+  const [p, o, c, r, w, pr, cp, rs, sc, ct, vt, ca] = await Promise.all([
     db.from('productos').select('*').order('linea').order('nombre'),
     db.from('pedidos').select('*, clientes(nombre,telefono,email), pedido_items(*)').order('creado_en',{ascending:false}).limit(200),
     db.from('clientes').select('*').order('creado_en',{ascending:false}).limit(400),
@@ -378,15 +398,16 @@ async function cargarTodo(){
     db.from('respaldos').select('creado_en,filas,resultado').order('creado_en',{ascending:false}).limit(1),
     db.from('secciones').select('*').order('orden'),
     db.from('categorias').select('*').order('orden'),
-    db.from('v_items_vendidos').select('*').order('fecha',{ascending:false}).limit(8000)
+    db.from('v_items_vendidos').select('*').order('fecha',{ascending:false}).limit(8000),
+    db.from('v_carritos_abandonados').select('*').limit(300)
   ]);
   productos = p.data || []; pedidos = o.data || [];
   clientes = c.data || []; recompras = r.data || []; espera = w.data || [];
   presentaciones = pr.data || []; componentes = cp.data || [];
   respaldos = rs.data || []; secciones = sc.data || []; categorias = ct.data || [];
-  ventas = vt.data || [];
+  ventas = vt.data || []; carritos = ca.data || [];
   pintarResumen(); pintarInventario(); pintarPedidos(); pintarClientes(); pintarRecompras(); pintarEspera(); pintarPacks();
-  llenarSecciones(); pintarNuevos(); pintarSecciones(); pintarReportes();
+  llenarSecciones(); pintarNuevos(); pintarSecciones(); pintarReportes(); pintarCarritos();
 }
 
 /* ---------------- resumen ---------------- */
@@ -407,7 +428,8 @@ function pintarResumen(){
     <div class="dato"><b>${porCobrar}</b><span>Por confirmar pago</span></div>
     <div class="dato ${agotados?'alerta':''}"><b>${agotados}</b><span>Agotados</span></div>
     <div class="dato ${sobre?'alerta':''}"><b>${sobre}</b><span>Sobrevendidos</span></div>
-    <div class="dato"><b>${espera.length}</b><span>Esperan aviso</span></div>`;
+    <div class="dato"><b>${espera.length}</b><span>Esperan aviso</span></div>
+    <div class="dato ${carritos.filter(c=>c.se_puede_contactar&&!c.atendido_en).length?'alerta':''}"><b>${carritos.filter(c=>c.se_puede_contactar&&!c.atendido_en).length}</b><span>Carritos a medias</span></div>`;
 
   const lista = [];
   productos.filter(p=>p.stock<0).forEach(p=>lista.push(
@@ -1031,6 +1053,84 @@ async function cambiarEstado(id, estado){
   if(error){ brindis('No se pudo cambiar el estado.'); return; }
   brindis(estado === 'pagado' ? 'Pagado. Inventario descontado.' : 'Estado actualizado');
   cargarTodo();
+}
+
+/* ---------------- carritos abandonados ---------------- */
+function haceCuanto(horas){
+  const h = Number(horas) || 0;
+  if(h < 24)  return 'hace ' + h + ' h';
+  const d = Math.round(h / 24);
+  return d === 1 ? 'ayer' : 'hace ' + d + ' días';
+}
+
+/* El mensaje que le vas a mandar. Sin presionar: le recuerdas lo que dejó
+   y le ofreces ayuda, que es lo que de verdad funciona. */
+function mensajeCarrito(c){
+  const nombre = (c.nombre || '').trim().split(' ')[0];
+  const lista = (c.items || [])
+    .map(i => '• ' + i.cantidad + '× ' + i.descripcion).join('\n');
+  return '¡Hola' + (nombre ? ' ' + nombre : '') + '! 👋 Te escribo de Sascha Fitness Shop MX.\n\n'
+       + 'Vi que dejaste tu pedido a medias y quise avisarte que te lo aparté un ratito:\n\n'
+       + lista + '\n\n'
+       + '¿Te ayudo a terminarlo? Si tienes dudas del producto o del envío, con gusto te digo. 😊';
+}
+
+function pintarCarritos(){
+  const f = document.getElementById('filtroCarrito').value;
+  const q = (document.getElementById('buscarCarrito').value || '')
+              .toLowerCase().replace(/[\s()-]/g,'').trim();
+  let lista = carritos.slice();
+  if(f === 'contacto')  lista = lista.filter(c => c.se_puede_contactar);
+  if(f === 'pendiente') lista = lista.filter(c => !c.atendido_en);
+  if(q) lista = lista.filter(c =>
+    [(c.nombre||''), (c.telefono||''), (c.email||'')]
+      .join(' ').toLowerCase().replace(/[\s()-]/g,'').includes(q));
+
+  const valor = lista.reduce((s,c) => s + (c.total||0), 0);
+  const resumen = lista.length
+    ? `<div class="tarjeta" style="background:#fff8e8;border-color:#f0d9a8">
+         <b>${lista.length} carrito${lista.length===1?'':'s'} · ${pesos(valor)} sin cobrar</b>
+         <div class="sub" style="margin-top:3px">Es dinero que ya estaba en la puerta.</div>
+       </div>` : '';
+
+  document.getElementById('listaCarritos').innerHTML = resumen + (lista.length ? lista.map(c => {
+    const items = (c.items||[])
+      .map(i => `${i.cantidad}× ${esc(i.descripcion)}`).join('<br>');
+    const tel = (c.telefono||'').replace(/\D/g,'');
+    const etiqueta = c.paso === 'ultimo-paso'
+      ? '<span class="chip rojo">Llegó al último paso</span>'
+      : '<span class="chip ambar">Llegó a confirmar</span>';
+    return `<div class="tarjeta"${c.atendido_en ? ' style="opacity:.55"' : ''}>
+      <div class="fila" style="margin-bottom:10px">
+        <div class="crece">
+          <b>${esc(c.nombre || 'Sin nombre')}</b> ${etiqueta}
+          <div class="sub">${esc(c.telefono || 'Sin teléfono')} · ${haceCuanto(c.horas)}</div>
+        </div>
+        <div style="text-align:right"><b>${pesos(c.total)}</b>
+          <div class="sub">${c.piezas} pz</div></div>
+      </div>
+      <div class="sub" style="margin-bottom:10px">${items || 'Sin productos'}</div>
+      <div class="fila">
+        ${tel ? `<a class="btn wa" style="text-decoration:none;padding:9px 14px"
+             target="_blank" rel="noopener"
+             href="https://wa.me/52${tel}?text=${encodeURIComponent(mensajeCarrito(c))}"
+             onclick="marcarCarrito('${esc(c.visitante)}')">Escribirle</a>`
+          : '<span class="sub">No dejó teléfono, no hay a dónde escribirle.</span>'}
+        ${c.atendido_en
+          ? '<span class="chip verde">Ya le escribiste</span>'
+          : (tel ? `<button class="btn claro" onclick="marcarCarrito('${esc(c.visitante)}', true)">Ya no insistir</button>` : '')}
+      </div>
+    </div>`;
+  }).join('') : '<div class="vacio">Ningún carrito a medias. Todas están terminando su compra.</div>');
+}
+
+async function marcarCarrito(visitante, recargar){
+  const c = carritos.find(x => x.visitante === visitante);
+  if(c) c.atendido_en = new Date().toISOString();
+  const { error } = await db.from('carritos')
+    .update({ atendido_en: new Date().toISOString() }).eq('visitante', visitante);
+  if(error){ brindis('No se pudo marcar. Revisa tu conexión.'); return; }
+  if(recargar){ brindis('Listo, ya no aparece pendiente.'); pintarCarritos(); }
 }
 
 /* ---------------- clientes ---------------- */
