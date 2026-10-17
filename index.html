@@ -3690,6 +3690,28 @@
     return m;
   }
 
+  /* Los datos que hacen falta para generar la guía de envío. Van siempre
+     dentro del pedido, sin depender de que la clienta mande su registro
+     aparte: si se le olvida, de todos modos los tienes. */
+  function datosDeEnvio(p){
+    p = p || {};
+    var linea = function(etiqueta, valor){
+      valor = String(valor == null ? '' : valor).trim();
+      return valor ? etiqueta + valor + '\n' : '';
+    };
+    var cuerpo = linea('', [p.calle, p.colonia ? 'Col. ' + p.colonia : '']
+                            .filter(Boolean).join(', '))
+               + linea('', [p.cp ? 'C.P. ' + p.cp : '', p.ciudad, p.estado]
+                            .filter(Boolean).join(', '))
+               + linea('Entre calles: ', p.entrecalles)
+               + linea('Referencias: ',  p.referencias);
+    if(!cuerpo) return '';
+    return '\n*📦 Enviar a:*\n'
+         + linea('', p.nombre)
+         + cuerpo
+         + linea('Tel: ', p.telefono);
+  }
+
   function mensajeCorto(folio, total, corta){
     var perfil = {};
     try{ perfil = JSON.parse(localStorage.getItem('userProfile') || '{}'); }catch(e){}
@@ -3702,6 +3724,7 @@
     if(!tot && window.ultimoPedido) tot = Number(window.ultimoPedido.total || 0);
     m += 'Total: *$' + tot.toLocaleString('es-MX') + ' MXN*\n';
     m += 'Pago: ' + metodo + '\n';
+    m += datosDeEnvio(perfil);        /* para la guía: nunca se recorta */
     if(typeof paymentMethod !== 'undefined' && paymentMethod === 'mercadopago'){
       if(typeof MERCADOPAGO_LINK !== 'undefined') m += '💳 ' + MERCADOPAGO_LINK + '\n';
     } else if(typeof cuentasDelDia === 'function'){
