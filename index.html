@@ -280,46 +280,46 @@
 <div class="form-row">
 <div class="form-group">
 <label>👤 Nombre Completo *</label>
-<input id="reg-nombre" placeholder="Nombre y apellidos" required="" type="text"/>
+<input id="reg-nombre" name="name" autocomplete="name" autocapitalize="words" spellcheck="false" placeholder="Nombre y apellidos" required="" type="text"/>
 </div>
 <div class="form-group">
 <label>📱 WhatsApp *</label>
-<input id="reg-telefono" placeholder="+52 55 1234 5678" required="" type="tel"/>
+<input id="reg-telefono" name="tel" autocomplete="tel" inputmode="tel" placeholder="+52 55 1234 5678" required="" type="tel"/>
 </div>
 </div>
 <div class="form-group">
 <label>📧 Email *</label>
-<input id="reg-email" placeholder="correo@ejemplo.com" required="" type="email"/>
+<input id="reg-email" name="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="correo@ejemplo.com" required="" type="email"/>
 </div>
 <h4 style="color: #444; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 2px solid #e8eaee;">2️⃣ Domicilio de Entrega</h4>
 <div class="form-row">
 <div class="form-group">
 <label>🛣️ Calle y Número *</label>
-<input id="reg-calle" placeholder="Ej. Av. Insurgentes Sur 1234, Int. 5" required="" type="text"/>
+<input id="reg-calle" name="address-line1" autocomplete="address-line1" placeholder="Ej. Av. Insurgentes Sur 1234, Int. 5" required="" type="text"/>
 </div>
 <div class="form-group">
 <label>🏘️ Colonia *</label>
-<input id="reg-colonia" placeholder="Ej. Del Valle" required="" type="text"/>
+<input id="reg-colonia" name="address-line2" autocomplete="address-line2" placeholder="Ej. Del Valle" required="" type="text"/>
 </div>
 </div>
 <div class="form-row">
 <div class="form-group">
 <label>↔️ Entre qué calles está *</label>
-<input id="reg-entrecalles" placeholder="Ej. Entre Félix Cuevas y Parroquia" required="" type="text"/>
+<input id="reg-entrecalles" name="entrecalles" autocomplete="off" placeholder="Ej. Entre Félix Cuevas y Parroquia" required="" type="text"/>
 </div>
 <div class="form-group">
 <label>📮 Código Postal *</label>
-<input id="reg-cp" maxlength="5" pattern="[0-9]{5}" placeholder="Ej. 03100" required="" type="text"/>
+<input id="reg-cp" name="postal-code" autocomplete="postal-code" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" placeholder="Ej. 03100" required="" type="text"/>
 </div>
 </div>
 <div class="form-row">
 <div class="form-group">
 <label>🏙️ Ciudad *</label>
-<input id="reg-ciudad" placeholder="Ej. Monterrey" required="" type="text"/>
+<input id="reg-ciudad" name="address-level2" autocomplete="address-level2" placeholder="Ej. Monterrey" required="" type="text"/>
 </div>
 <div class="form-group">
 <label>🗺️ Estado *</label>
-<input id="reg-estado" placeholder="Ej. Nuevo León" required="" type="text"/>
+<input id="reg-estado" name="address-level1" autocomplete="address-level1" placeholder="Ej. Nuevo León" required="" type="text"/>
 </div>
 </div>
 <div class="form-group">
@@ -2109,6 +2109,20 @@
                     : 'Faltan ' + faltantes.length + ' datos: ' + faltantes.map(f => ETIQUETAS[f]).join(', '));
                 return;
             }
+            /* El navegador a veces mete el correo en el casillero del nombre.
+               Si pasa, se le dice aquí en vez de que llegue así al pedido. */
+            if(/@/.test(profile.nombre) || /^\+?[\d\s()-]{7,}$/.test(profile.nombre)) {
+                document.getElementById('reg-nombre').style.borderColor = '#e74c3c';
+                document.getElementById('reg-nombre').focus();
+                showMsg('errorMsg', 'En "Nombre completo" va tu nombre y apellidos, no tu correo ni tu teléfono. Revísalo, por favor.');
+                return;
+            }
+            if(profile.nombre.trim().length < 3) {
+                document.getElementById('reg-nombre').style.borderColor = '#e74c3c';
+                document.getElementById('reg-nombre').focus();
+                showMsg('errorMsg', 'Escribe tu nombre y apellidos completos.');
+                return;
+            }
             if(!/^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$/.test(profile.email)) {
                 document.getElementById('reg-email').style.borderColor = '#e74c3c';
                 document.getElementById('reg-email').focus();
@@ -3569,6 +3583,11 @@
       const v = (perfil[c[0]] || '').toString().trim();
       if(!v) faltan.push(c[1]);
     });
+
+    /* perfiles viejos donde el navegador metió el correo en el nombre */
+    const nom = (perfil.nombre || '').trim();
+    if(nom && (/@/.test(nom) || /^\+?[\d\s()-]{7,}$/.test(nom)))
+      faltan.push('Tu nombre y apellidos (ahora hay un correo o un teléfono ahí)');
 
     const correo = (perfil.email || '').trim();
     if(correo && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(correo))
