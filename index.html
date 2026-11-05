@@ -1794,6 +1794,14 @@
 <h2 class="section-title">✓ Confirmar tu Pedido</h2>
 <div class="form-section">
 <div id="orderSummary" style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #24478f;"></div>
+<div id="cajaCupon" style="background: linear-gradient(160deg,#fffdf4,#fff7e0); border: 2px dashed #f0c14b; border-radius: 10px; padding: 13px 15px; margin-bottom: 15px;">
+<div style="font-weight: 800; color: #7a5c00; font-size: 0.95em; margin-bottom: 8px;">🎟️ ¿Tienes un código de descuento?</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<input autocapitalize="characters" autocomplete="off" id="cuponInput" maxlength="24" placeholder="Escríbelo aquí" spellcheck="false" style="flex: 1 1 150px; min-width: 0; padding: 11px 12px; border: 2px solid #e0d6b8; border-radius: 8px; font-size: 1em; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;" type="text"/>
+<button id="cuponBtn" onclick="aplicarCupon()" style="flex: 0 0 auto; background: #24478f; color: white; border: none; border-radius: 8px; padding: 11px 20px; font-weight: 800; cursor: pointer; font-size: 0.95em;" type="button">Aplicar</button>
+</div>
+<div id="cuponAviso" style="margin-top: 8px; font-size: 0.9em;"></div>
+</div>
 <form onsubmit="submitOrder(event)">
 <div id="sinRegistroAviso" style="display: none; background: #fff8e1; border: 2px solid #f5b942; border-radius: 10px; padding: 14px 16px; margin-bottom: 15px; text-align: center;">
                         ⚠️ <strong>Aún no tienes registro.</strong> Para enviar tu pedido, primero completa tus datos de entrega.<br/>
@@ -2386,6 +2394,74 @@
         };
         const MERCADOPAGO_LINK = 'https://link.mercadopago.com.mx/saschafitnessshopmx'; // Link de cobro de Mercado Pago
         const DESCUENTO_TRANSFERENCIA = 0.05; // 5% de descuento pagando por transferencia
+
+        /* ---------- Código de descuento ----------
+           El código suma su descuento ENCIMA del 5% de transferencia.
+           Quien no tenga código paga lo de siempre: nada cambia para ella. */
+        let cuponAplicado = null;
+
+        function descuentoCupon(subtotal){
+            if(!cuponAplicado) return 0;
+            if(paymentMethod !== 'whatsapp') return 0;   /* sólo con transferencia */
+            if(cuponAplicado.tipo === 'monto')
+                return Math.min(Math.round(cuponAplicado.valor), subtotal);
+            return Math.round(subtotal * (cuponAplicado.valor / 100));
+        }
+
+        function avisoCupon(texto, bien){
+            const d = document.getElementById('cuponAviso');
+            if(!d) return;
+            d.innerHTML = texto
+              ? `<span style="color:${bien ? '#1e7a35' : '#b4341f'}; font-weight:700">${texto}</span>`
+              : '';
+        }
+
+        function quitarCupon(){
+            cuponAplicado = null;
+            const i = document.getElementById('cuponInput');
+            if(i){ i.value = ''; i.disabled = false; }
+            const b = document.getElementById('cuponBtn');
+            if(b){ b.textContent = 'Aplicar'; b.disabled = false; }
+            avisoCupon('');
+            updateOrderSummary();
+        }
+
+        async function aplicarCupon(){
+            const inp = document.getElementById('cuponInput');
+            const btn = document.getElementById('cuponBtn');
+            if(!inp || !btn) return;
+
+            if(cuponAplicado) return quitarCupon();   /* el botón también quita */
+
+            const codigo = (inp.value || '').trim().toUpperCase();
+            if(!codigo) return avisoCupon('Escribe tu código.', false);
+
+            btn.disabled = true; btn.textContent = 'Revisando…';
+            avisoCupon('');
+            try{
+                if(typeof window.revisarCupon !== 'function')
+                    throw new Error('sin conexión');
+                const total = consolidarCarrito().reduce((s,i) => s + i.precio * (i.cantidad || 1), 0);
+                const r = await window.revisarCupon(codigo, total);
+                if(r && r.ok){
+                    cuponAplicado = { codigo: r.codigo, tipo: r.tipo, valor: r.valor };
+                    inp.value = r.codigo; inp.disabled = true;
+                    btn.textContent = 'Quitar'; btn.disabled = false;
+                    avisoCupon((r.mensaje || '¡Código aplicado!')
+                      + (paymentMethod !== 'whatsapp'
+                         ? ' Se aplica al pagar por transferencia.' : ''), true);
+                } else {
+                    cuponAplicado = null;
+                    btn.textContent = 'Aplicar'; btn.disabled = false;
+                    avisoCupon((r && r.mensaje) || 'Ese código no se pudo aplicar.', false);
+                }
+            }catch(e){
+                cuponAplicado = null;
+                btn.textContent = 'Aplicar'; btn.disabled = false;
+                avisoCupon('No pudimos revisar el código ahorita. Intenta de nuevo o pídelo por WhatsApp.', false);
+            }
+            updateOrderSummary();
+        }
         const COSTO_ENVIO = 150;            // costo de envío
         const MINIMO_ENVIO_GRATIS = 1990;   // monto para envío gratis en Recomendaciones e Imperdibles
         // Envío gratis si el pedido lleva algún producto Saschafitness o algún Pack Ahorro.
@@ -2593,8 +2669,9 @@
 
             const conDescuento = paymentMethod === 'whatsapp';
             const descuento = conDescuento ? Math.round(total * DESCUENTO_TRANSFERENCIA) : 0;
+            const extra = descuentoCupon(total);
             const envio = calcularEnvio(items);
-            const totalFinal = total - descuento + envio;
+            const totalFinal = total - descuento - extra + envio;
 
             html += `<div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #24478f;">`;
             if(conDescuento || envio > 0) {
@@ -2605,6 +2682,11 @@
             if(conDescuento) {
                 html += `<div style="display: flex; justify-content: space-between; color: #25d366; font-weight: bold; font-size: 0.95em; padding: 2px 0;">
                     <span>Descuento 5% por transferencia</span><span>−$${descuento.toLocaleString('es-MX')} MXN</span>
+                </div>`;
+            }
+            if(extra > 0) {
+                html += `<div style="display: flex; justify-content: space-between; color: #b4341f; font-weight: bold; font-size: 0.95em; padding: 2px 0;">
+                    <span>🎟️ Código ${cuponAplicado.codigo}</span><span>−$${extra.toLocaleString('es-MX')} MXN</span>
                 </div>`;
             }
             if(envio > 0) {
@@ -2902,6 +2984,22 @@
         }).then(function(){}, function(){});
       }catch(e){}
     }, 2500);
+  };
+
+  /* El código se revisa en el servidor. Aquí no vive ninguna lista:
+     nadie puede sacar los códigos mirando la página. */
+  /* El código que de verdad se aplicó, para que el servidor lo aparte */
+  window.cuponDelPedido = function(){
+    try{ return (window.ultimoPedido && window.ultimoPedido.cupon) || null; }
+    catch(e){ return null; }
+  };
+
+  window.revisarCupon = async function(codigo, subtotal){
+    if(!bd) throw new Error('sin conexión');
+    const { data, error } = await bd.rpc('validar_cupon',
+      { p_codigo: codigo, p_subtotal: Math.round(Number(subtotal) || 0) });
+    if(error) throw error;
+    return data;
   };
 
   window.carritoConvertido = function(){
@@ -3754,6 +3852,7 @@
     if(!corta && (p.descuento > 0 || p.envio > 0)){
       m += 'Subtotal: ' + pesosTxt(p.subtotal) + '\n';
       if(p.descuento > 0) m += 'Descuento 5%: −' + pesosTxt(p.descuento) + '\n';
+      if(p.extra > 0) m += '🎟️ Código ' + (p.cupon || '') + ': −' + pesosTxt(p.extra) + '\n';
       m += 'Envío: ' + (p.envio > 0 ? pesosTxt(p.envio) : 'GRATIS 🚚') + '\n';
     }
     return m;
@@ -3959,14 +4058,18 @@
         const conDesc  = (typeof paymentMethod !== 'undefined') && paymentMethod === 'whatsapp';
         const tasa     = (typeof DESCUENTO_TRANSFERENCIA !== 'undefined') ? DESCUENTO_TRANSFERENCIA : 0.05;
         const descuento = conDesc ? Math.round(subtotal * tasa) : 0;
-        const totalFinal = subtotal - descuento + envio;
+        const extra = (typeof descuentoCupon === 'function') ? descuentoCupon(subtotal) : 0;
+        const totalFinal = subtotal - descuento - extra + envio;
 
         /* foto del pedido para el mensaje de WhatsApp (el carrito se vacía después) */
         window.ultimoPedido = {
           items: items.map(function(i){
             return { nombre: i.nombre, cant: i.cantidad || 1, precio: i.precio };
           }),
-          subtotal: subtotal, descuento: descuento, envio: envio, total: totalFinal
+          subtotal: subtotal, descuento: descuento, extra: extra,
+          cupon: (typeof cuponAplicado !== 'undefined' && cuponAplicado && extra > 0)
+                   ? cuponAplicado.codigo : null,
+          envio: envio, total: totalFinal
         };
 
         const lineas   = [];
@@ -4013,6 +4116,7 @@
           p_cliente: perfil, p_items: lineas,
           p_subtotal: subtotal, p_envio: envio, p_total: totalFinal,
           p_descuento: descuento,
+          p_cupon: (window.cuponDelPedido && window.cuponDelPedido()) || null,
           p_metodo: (typeof paymentMethod !== 'undefined' ? paymentMethod : 'transferencia')
         };
         if(!bd){                       /* sin base: el pedido se guarda para reintentar */
@@ -4497,7 +4601,8 @@
       var env = (typeof calcularEnvio === 'function') ? calcularEnvio(items) : 0;
       var des = (paymentMethod === 'whatsapp' && typeof DESCUENTO_TRANSFERENCIA !== 'undefined')
                 ? Math.round(sub * DESCUENTO_TRANSFERENCIA) : 0;
-      return sub - des + env;
+      var ext = (typeof descuentoCupon === 'function') ? descuentoCupon(sub) : 0;
+      return sub - des - ext + env;
     }catch(e){ return 0; }
   }
 

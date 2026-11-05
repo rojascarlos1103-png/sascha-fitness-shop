@@ -133,6 +133,7 @@ section{display:none} section.on{display:block}
   <button onclick="ver('recompras',this)">Recompras</button>
   <button onclick="ver('espera',this)">Avísame</button>
   <button onclick="ver('packs',this)">Packs y precios</button>
+  <button onclick="ver('cupones',this)">Códigos</button>
 </nav>
 
 <main>
@@ -333,6 +334,38 @@ section{display:none} section.on{display:block}
     <div id="listaPacks"></div>
   </section>
 
+  <section id="cupones">
+    <p class="sub" style="margin:0 0 12px">
+      Códigos de descuento. El descuento del código se suma al 5% de transferencia.
+      Si pones fechas, el código se prende y se apaga solo.
+    </p>
+
+    <div class="tarjeta" style="background:#f6f8fd">
+      <div class="fila" style="gap:8px;flex-wrap:wrap">
+        <label class="np-campo crece" style="min-width:130px">Código
+          <input id="cu_codigo" maxlength="24" placeholder="Ej. BUENFIN10"
+                 style="text-transform:uppercase"></label>
+        <label class="np-campo" style="width:92px">Descuento
+          <input id="cu_valor" type="number" min="1" step="1" inputmode="numeric" value="10"></label>
+        <label class="np-campo" style="width:108px">Tipo
+          <select id="cu_tipo"><option value="pct">%</option><option value="monto">$ fijo</option></select></label>
+      </div>
+      <div class="fila" style="gap:8px;flex-wrap:wrap">
+        <label class="np-campo crece" style="min-width:140px">Empieza (opcional)
+          <input id="cu_desde" type="date"></label>
+        <label class="np-campo crece" style="min-width:140px">Termina (opcional)
+          <input id="cu_hasta" type="date"></label>
+        <label class="np-campo" style="width:110px">Usos máx.
+          <input id="cu_max" type="number" min="1" step="1" inputmode="numeric"
+                 placeholder="sin límite"></label>
+      </div>
+      <div id="cu_aviso"></div>
+      <button class="btn" onclick="crearCupon()" style="width:100%;margin-top:8px;padding:12px">Crear código</button>
+    </div>
+
+    <div id="listaCupones" style="margin-top:14px"></div>
+  </section>
+
   <section id="espera">
     <p class="sub" style="margin:0 0 14px">
       Clientes que pidieron aviso cuando llegue un producto. Los que ya tienes en existencia
@@ -354,7 +387,7 @@ const WHATSAPP = '5215512345678'; // ← pon aquí tu número, con 52 y sin sign
 
 const db = supabase.createClient(URL_SUPABASE, CLAVE_PUBLICA);
 
-let productos = [], pedidos = [], clientes = [], recompras = [], espera = [], presentaciones = [], componentes = [], respaldos = [], secciones = [], categorias = [], ventas = [], carritos = [];
+let productos = [], pedidos = [], clientes = [], recompras = [], espera = [], presentaciones = [], componentes = [], respaldos = [], secciones = [], categorias = [], ventas = [], carritos = [], cupones = [];
 let fotoLista = null;
 
 /* ---------------- acceso ---------------- */
@@ -443,7 +476,8 @@ async function cargarTodo(){
     ['respaldos',   db.from('respaldos').select('creado_en,filas,resultado').order('creado_en',{ascending:false}).limit(1)],
     ['secciones',   db.from('secciones').select('*').order('orden')],
     ['categorias',  db.from('categorias').select('*').order('orden')],
-    ['carritos',    db.from('v_carritos_abandonados').select('*').limit(300)]
+    ['carritos',    db.from('v_carritos_abandonados').select('*').limit(300)],
+    ['cupones',     db.from('cupones').select('*').order('creado_en',{ascending:false})]
   ];
   const res = await Promise.all(q.map(([n,c]) => conTiempo(c, n, 20000)));
   const d = {}; const fallaron = [];
@@ -456,12 +490,12 @@ async function cargarTodo(){
   recompras = d.recompras; espera = d.espera;
   presentaciones = d.presentaciones; componentes = d.componentes;
   respaldos = d.respaldos; secciones = d.secciones; categorias = d.categorias;
-  carritos = d.carritos;
+  carritos = d.carritos; cupones = d.cupones;
 
   /* Cada dibujo va por su cuenta: si uno truena, los demás igual se pintan. */
   [pintarResumen, pintarInventario, pintarPedidos, pintarClientes, pintarRecompras,
    pintarEspera, pintarPacks, llenarSecciones, pintarNuevos, pintarSecciones,
-   pintarReportes, pintarCarritos].forEach(f => { try{ f(); }catch(e){ console.warn(e); } });
+   pintarReportes, pintarCarritos, pintarCupones].forEach(f => { try{ f(); }catch(e){ console.warn(e); } });
 
   if(caja){
     caja.innerHTML = fallaron.length
@@ -1293,6 +1327,97 @@ async function cambiarEstado(id, estado){
   if(error){ brindis('No se pudo cambiar el estado.'); return; }
   brindis(estado === 'pagado' ? 'Pagado. Inventario descontado.' : 'Estado actualizado');
   cargarTodo();
+}
+
+/* ---------------- códigos de descuento ---------------- */
+function diaCorto(t){
+  if(!t) return null;
+  const d = new Date(t);
+  return isNaN(d) ? null : d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
+}
+
+function estadoCupon(c){
+  const ahora = Date.now();
+  if(!c.activo) return { txt:'Pausado', clase:'gris' };
+  if(c.valido_desde && ahora < new Date(c.valido_desde).getTime())
+    return { txt:'Empieza el ' + diaCorto(c.valido_desde), clase:'ambar' };
+  if(c.vence_en && ahora > new Date(c.vence_en).getTime())
+    return { txt:'Terminado', clase:'gris' };
+  if(c.usos_max != null && c.usos >= c.usos_max)
+    return { txt:'Agotado', clase:'rojo' };
+  return { txt:'Activo', clase:'verde' };
+}
+
+function pintarCupones(){
+  const cont = document.getElementById('listaCupones');
+  if(!cont) return;
+  if(!cupones.length){
+    cont.innerHTML = '<div class="vacio">Todavía no has creado ningún código.</div>';
+    return;
+  }
+  cont.innerHTML = cupones.map(c => {
+    const e = estadoCupon(c);
+    const desc = c.tipo === 'monto' ? pesos(c.valor) : c.valor + '%';
+    const usos = c.usos + (c.usos_max != null ? ' de ' + c.usos_max : ' usos');
+    const fechas = [diaCorto(c.valido_desde), diaCorto(c.vence_en)].filter(Boolean).join(' al ');
+    return `<div class="tarjeta"${c.activo ? '' : ' style="opacity:.6"'}>
+      <div class="fila" style="margin-bottom:8px">
+        <div class="crece">
+          <b style="letter-spacing:1px">${esc(c.codigo)}</b>
+          <span class="chip ${e.clase}">${esc(e.txt)}</span>
+          <div class="sub">${esc(desc)} extra · ${esc(usos)}${fechas ? ' · ' + esc(fechas) : ''}</div>
+        </div>
+        <div style="text-align:right"><b>${c.usos}</b><div class="sub">usados</div></div>
+      </div>
+      <div class="fila">
+        <button class="btn claro" onclick="pausarCupon('${esc(c.codigo)}', ${c.activo ? 'false' : 'true'})">
+          ${c.activo ? 'Pausar' : 'Reactivar'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function pausarCupon(codigo, activo){
+  const { error } = await db.from('cupones').update({ activo: activo }).eq('codigo', codigo);
+  if(error) return brindis('No se pudo cambiar: ' + error.message);
+  const c = cupones.find(x => x.codigo === codigo);
+  if(c) c.activo = activo;
+  pintarCupones();
+  brindis(activo ? 'Código reactivado' : 'Código pausado');
+}
+
+async function crearCupon(){
+  const aviso = (t, tipo) => document.getElementById('cu_aviso').innerHTML =
+    t ? `<div class="aviso ${tipo||'err'}">${esc(t)}</div>` : '';
+  const codigo = (document.getElementById('cu_codigo').value || '').trim().toUpperCase();
+  const valor  = parseInt(document.getElementById('cu_valor').value, 10);
+  const tipo   = document.getElementById('cu_tipo').value;
+  const desde  = document.getElementById('cu_desde').value;
+  const hasta  = document.getElementById('cu_hasta').value;
+  const max    = parseInt(document.getElementById('cu_max').value, 10);
+
+  if(!/^[A-Z0-9]{3,24}$/.test(codigo))
+    return aviso('El código va en letras y números, sin espacios ni acentos. Entre 3 y 24 caracteres.');
+  if(cupones.some(c => c.codigo === codigo)) return aviso('Ya existe un código así.');
+  if(isNaN(valor) || valor <= 0) return aviso('Pon de cuánto es el descuento.');
+  if(tipo === 'pct' && valor > 50) return aviso('Un 50% es muchísimo. Revisa ese número.');
+  if(desde && hasta && desde > hasta) return aviso('La fecha de inicio va antes que la de fin.');
+
+  /* las fechas se guardan en hora de CDMX: de las 00:00 del día que empieza
+     a las 23:59 del día que termina */
+  const fila = { codigo, tipo, valor, activo: true,
+    usos_max: isNaN(max) ? null : max,
+    valido_desde: desde ? new Date(desde + 'T00:00:00-06:00').toISOString() : null,
+    vence_en:     hasta ? new Date(hasta + 'T23:59:59-06:00').toISOString() : null,
+    descripcion:  'Creado desde el panel' };
+
+  const { error } = await db.from('cupones').insert(fila);
+  if(error) return aviso('No se pudo guardar: ' + error.message);
+  aviso('Código ' + codigo + ' listo.', 'ok');
+  document.getElementById('cu_codigo').value = '';
+  document.getElementById('cu_max').value = '';
+  brindis('Código creado');
+  await cargarTodo();
 }
 
 /* ---------------- carritos abandonados ---------------- */
