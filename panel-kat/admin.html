@@ -191,8 +191,23 @@ section{display:none} section.on{display:block}
       <div class="fila" style="gap:8px">
         <label class="np-campo crece">Precio menudeo
           <input id="np_menudeo" type="number" min="0" step="1" inputmode="numeric" placeholder="$"></label>
-        <label class="np-campo crece">Existencias
+        <label class="np-campo crece" id="np_cajaStock">Existencias
           <input id="np_stock" type="number" min="0" step="1" inputmode="numeric" value="1"></label>
+      </div>
+
+      <label class="np-check">
+        <input id="np_espack" type="checkbox" onchange="verPack()"> Es un pack (lleva varios productos juntos)</label>
+
+      <div id="np_cajaPack" style="display:none; background:#f3f7ff; border:1px solid #d7e2f7;
+           border-radius:10px; padding:11px 12px; margin:8px 0">
+        <div class="sub" style="margin-bottom:8px">
+          Qué lleva el pack. Al venderse, se descuenta una pieza de cada uno de éstos.
+          El pack se agota solo cuando a alguno se le acaben las existencias.
+        </div>
+        <div id="np_partes"></div>
+        <button class="btn claro" type="button" onclick="agregarParte()"
+                style="margin-top:8px;padding:8px 12px">+ Agregar producto al pack</button>
+        <div class="sub" id="np_resumenPack" style="margin-top:8px"></div>
       </div>
 
       <label class="np-check">
@@ -803,6 +818,69 @@ function llenarCategorias(){
                 || '<option value="">(sin categorías)</option>';
 }
 
+/* ---------- packs: de qué productos se arma ---------- */
+function verPack(){
+  const es = document.getElementById('np_espack').checked;
+  document.getElementById('np_cajaPack').style.display = es ? 'block' : 'none';
+  document.getElementById('np_cajaStock').style.display = es ? 'none' : 'block';
+  if(es && !document.querySelectorAll('#np_partes .np-parte').length) agregarParte();
+  resumenPack();
+}
+
+/* sólo productos sueltos con SKU: un pack no puede llevar otro pack dentro */
+function productosParaPack(){
+  const packs = new Set(presentaciones.filter(p => p.tipo === 'pack').map(p => p.nombre));
+  return productos
+    .filter(p => p.sku && p.activo !== false && !packs.has(p.nombre))
+    .sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'','es'));
+}
+
+function agregarParte(){
+  const cont = document.getElementById('np_partes');
+  const ops = productosParaPack()
+    .map(p => `<option value="${esc(p.sku)}">${esc(p.nombre)}</option>`).join('');
+  const fila = document.createElement('div');
+  fila.className = 'np-parte fila';
+  fila.style.cssText = 'gap:6px;margin-bottom:6px;align-items:center';
+  fila.innerHTML =
+    `<select class="np-parte-sku crece" onchange="resumenPack()">${ops || '<option value="">(sin productos)</option>'}</select>
+     <input class="np-parte-cant" type="number" min="1" step="1" value="1" inputmode="numeric"
+            style="width:68px" onchange="resumenPack()" oninput="resumenPack()">
+     <button class="btn claro" type="button" style="padding:8px 11px"
+             onclick="this.parentNode.remove(); resumenPack();">Quitar</button>`;
+  cont.appendChild(fila);
+  resumenPack();
+}
+
+function partesDelPack(){
+  return [...document.querySelectorAll('#np_partes .np-parte')].map(f => ({
+    sku:  f.querySelector('.np-parte-sku').value,
+    cant: Math.max(1, parseInt(f.querySelector('.np-parte-cant').value, 10) || 1)
+  })).filter(p => p.sku);
+}
+
+/* Cuántos packs podrías armar hoy, y cuánto valdrían sueltos */
+function resumenPack(){
+  const caja = document.getElementById('np_resumenPack');
+  if(!caja) return;
+  const partes = partesDelPack();
+  if(!partes.length){ caja.textContent = ''; return; }
+  const junta = {};
+  partes.forEach(p => { junta[p.sku] = (junta[p.sku] || 0) + p.cant; });
+  let arman = Infinity, suelto = 0;
+  Object.keys(junta).forEach(sku => {
+    const pr = productos.find(x => x.sku === sku) || {};
+    arman  = Math.min(arman, Math.floor((pr.stock || 0) / junta[sku]));
+    suelto += (pr.precio_menudeo || 0) * junta[sku];
+  });
+  if(!isFinite(arman)) arman = 0;
+  const precio = parseInt((document.getElementById('np_menudeo')||{}).value, 10);
+  const ahorro = (!isNaN(precio) && precio > 0 && suelto > precio)
+    ? ` · la clienta ahorra ${pesos(suelto - precio)}` : '';
+  caja.innerHTML = `Con tus existencias de hoy alcanzan para <b>${arman}</b> pack${arman===1?'':'s'}.`
+                 + ` Comprado suelto costaría ${pesos(suelto)}${ahorro}.`;
+}
+
 function verMayoreo(){
   document.getElementById('np_cajaMayoreo').style.display =
     document.getElementById('np_enmayoreo').checked ? 'block' : 'none';
@@ -860,6 +938,18 @@ function nuevoSku(){
   return 'NV-' + String(n + 1).padStart(3, '0');
 }
 
+/* De cuántos packs alcanza con lo que hay hoy en el piso */
+function packArman(partes){
+  const junta = {};
+  (partes||[]).forEach(p => { junta[p.sku] = (junta[p.sku] || 0) + p.cant; });
+  let n = Infinity;
+  Object.keys(junta).forEach(sku => {
+    const pr = productos.find(x => x.sku === sku) || {};
+    n = Math.min(n, Math.floor((pr.stock || 0) / junta[sku]));
+  });
+  return isFinite(n) ? n : 0;
+}
+
 function avisoNuevo(texto, tipo){
   document.getElementById('np_aviso').innerHTML =
     texto ? `<div class="aviso ${tipo || 'err'}">${esc(texto)}</div>` : '';
@@ -881,7 +971,16 @@ async function guardarProducto(){
     return avisoNuevo('Ya tienes un producto que se llama así.');
   if(!seccion || !cat) return avisoNuevo('Elige sección y categoría.');
   if(isNaN(menudeo) || menudeo <= 0) return avisoNuevo('Falta el precio de menudeo.');
-  if(isNaN(stock) || stock < 0) return avisoNuevo('Pon cuántas piezas tienes.');
+  const esPack = document.getElementById('np_espack').checked;
+  const partes = esPack ? partesDelPack() : [];
+  if(esPack){
+    if(partes.length < 2) return avisoNuevo('Un pack lleva al menos dos productos. Agrégalos abajo.');
+    if(presentaciones.some(p => p.tipo === 'pack' &&
+        (p.nombre||'').toLowerCase() === nombre.toLowerCase()))
+      return avisoNuevo('Ya existe un pack con ese nombre.');
+  } else {
+    if(isNaN(stock) || stock < 0) return avisoNuevo('Pon cuántas piezas tienes.');
+  }
   if(enMay && (isNaN(mayoreo) || mayoreo <= 0))
     return avisoNuevo('Marcaste que va en Mayoreo: falta ese precio.');
   if(!fotoLista) return avisoNuevo('Falta la foto del producto.');
@@ -901,24 +1000,45 @@ async function guardarProducto(){
     const ins = await db.from('productos').insert({
       sku: sku, nombre: nombre, linea: LINEA_DE[seccion] || 'Otras marcas',
       categoria: cat, seccion: seccion, descripcion: desc || null,
-      stock: stock, precio_menudeo: menudeo,
+      stock: esPack ? packArman(partes) : stock, precio_menudeo: menudeo,
       precio_mayoreo: enMay ? mayoreo : null, en_mayoreo: enMay,
       dias_duracion: isNaN(dias) ? 30 : dias,
       imagen_url: url, activo: true
     });
     if(ins.error) throw new Error('No se pudo guardar: ' + ins.error.message);
 
+    /* Si es pack, además se guarda su receta: de qué descuenta al venderse.
+       La tienda la lee de aquí, así que no hay que tocar código nunca más. */
+    if(esPack){
+      const pres = await db.from('presentaciones')
+        .insert({ tipo: 'pack', nombre: nombre, precio: menudeo })
+        .select('id').single();
+      if(pres.error) throw new Error('El producto se guardó, pero la receta del pack no: '
+                                     + pres.error.message);
+      const junta = {};
+      partes.forEach(p => { junta[p.sku] = (junta[p.sku] || 0) + p.cant; });
+      const filas = Object.keys(junta).map(sku => ({
+        presentacion_id: pres.data.id, sku: sku, cantidad: junta[sku], grupo: null
+      }));
+      const comp = await db.from('presentacion_componentes').insert(filas);
+      if(comp.error) throw new Error('El producto se guardó, pero faltó la receta: '
+                                     + comp.error.message);
+    }
+
     ['np_nombre','np_desc','np_menudeo','np_mayoreo'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('np_stock').value = '1';
     document.getElementById('np_enmayoreo').checked = false; verMayoreo();
+    document.getElementById('np_espack').checked = false;
+    document.getElementById('np_partes').innerHTML = ''; verPack();
     document.getElementById('np_foto').value = '';
     const vista = document.getElementById('np_vista');
     vista.removeAttribute('src'); vista.style.display = 'none';
     document.getElementById('np_peso').textContent = '';
     fotoLista = null;
 
-    avisoNuevo(nombre + ' ya está en la tienda (' + sku + ').', 'ok');
-    brindis('Producto publicado');
+    avisoNuevo(nombre + (esPack ? ' ya está en la tienda como pack (' : ' ya está en la tienda (')
+               + sku + ').', 'ok');
+    brindis(esPack ? 'Pack publicado' : 'Producto publicado');
     await cargarTodo();
   }catch(e){
     avisoNuevo(e.message || 'Algo falló al guardar.');

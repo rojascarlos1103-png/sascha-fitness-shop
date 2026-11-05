@@ -2964,8 +2964,10 @@
 
   function skusDe(nombre){
     const base = String(nombre||'').replace(/\s*\(Mayoreo\)\s*/,'').trim();
-    if(SKU_POR_NOMBRE[base]) return [{sku: SKU_POR_NOMBRE[base], cant: 1}];
+    /* Primero la receta: si es pack, se descuenta de lo que lleva dentro,
+       no de su propio SKU (que no tiene existencias propias). */
     if(PACKS[base]) return PACKS[base].filter(c => c.sku).map(c => ({sku: c.sku, cant: c.cant}));
+    if(SKU_POR_NOMBRE[base]) return [{sku: SKU_POR_NOMBRE[base], cant: 1}];
 
     const m = base.match(/^(.*?)\s*\(([^()]*)\)\s*$/);
     const plantilla = m ? m[1].trim() : base;
@@ -3199,9 +3201,10 @@
 
   async function cargarInventario(){
     try{
-      const [inv, pres] = await Promise.all([
+      const [inv, pres, comp] = await Promise.all([
         bd.from('productos').select('*'),
-        bd.from('presentaciones').select('nombre,tipo,precio')
+        bd.from('presentaciones').select('id,nombre,tipo,precio'),
+        bd.from('presentacion_componentes').select('presentacion_id,sku,cantidad,grupo')
       ]);
       if(inv.error || !inv.data) return;        // si falla, la tienda sigue como siempre
       inv.data.forEach(p => {
@@ -3213,6 +3216,34 @@
       if(!pres.error && pres.data) pres.data
         .filter(p => p.tipo === 'pack')
         .forEach(p => { PRECIO_PRES[p.nombre] = p.precio; });
+
+      /* Las recetas de los packs que diste de alta desde el panel.
+         Con esto la tienda sabe de qué productos descontar al venderlos. */
+      if(!pres.error && pres.data && !comp.error && comp.data){
+        const porId = {};
+        comp.data.forEach(c => { (porId[c.presentacion_id] = porId[c.presentacion_id] || []).push(c); });
+        pres.data.filter(p => p.tipo === 'pack').forEach(p => {
+          const partes = (porId[p.id] || [])
+            .map(c => ({ sku: c.sku || null, grupo: c.grupo || null,
+                         cant: Math.max(1, parseInt(c.cantidad, 10) || 1) }));
+          if(partes.length) PACKS[p.nombre] = partes;
+        });
+      }
+
+      /* Un pack no tiene existencias propias: las hereda del que primero se acabe.
+         Así se agota solo y nadie puede pedir más de lo que hay. */
+      inv.data.forEach(p => {
+        const receta = PACKS[p.nombre];
+        if(!receta) return;
+        const conSku = receta.filter(c => c.sku);
+        if(!conSku.length) return;
+        STOCK[p.sku] = conSku.reduce(function(min, c){
+          const hay = STOCK[c.sku];
+          if(hay == null) return min;
+          return Math.min(min, Math.floor(hay / c.cant));
+        }, Infinity);
+        if(!isFinite(STOCK[p.sku])) STOCK[p.sku] = 0;
+      });
       await traerSecciones();
       dibujarNuevos(inv.data);
       ocultarInactivos(inv.data);
