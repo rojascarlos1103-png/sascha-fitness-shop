@@ -261,6 +261,7 @@
 <div class="carousel-item" onclick="showSection('mayoreo')" style="background: #020a17; align-items: center; justify-content: center; align-items:center; justify-content:center;"><img alt="Precios especiales de mayoreo" class="poster" loading="lazy" src="imagenes/slide-mayoreo.webp" style="width:100%; height:100%; object-fit:contain; object-position:center; display:block; margin:0;"/></div>
 <div class="carousel-item" onclick="showSection('checkout')" style="background: #0d2a21; align-items: center; justify-content: center; align-items:center; justify-content:center;"><img alt="5% de descuento pagando por transferencia" class="poster" loading="lazy" src="imagenes/slide-transferencia.webp" style="width:100%; height:100%; object-fit:contain; object-position:center; display:block; margin:0;"/></div>
 <div class="carousel-item" onclick="showSection('contacto')" style="background: #232e3d; align-items: center; justify-content: center; align-items:center; justify-content:center;"><img alt="Envío gratis con cualquier suplemento Sascha Fitness" class="poster" loading="lazy" src="imagenes/slide-envio.webp" style="width:100%; height:100%; object-fit:contain; object-position:center; display:block; margin:0;"/></div>
+<div class="carousel-item" onclick="showSection('sascha')" style="cursor: pointer; background: #0e0f11; align-items: center; justify-content: center;"><img alt="Súper dúo FIT9 y RESTORE · combos y packs" class="poster" loading="lazy" src="imagenes/slide-duo.webp" style="width:100%; height:100%; object-fit:contain; object-position:center; display:block; margin:0;"/></div>
 <button class="carousel-button prev" onclick="changeSlide(-1)">❮</button>
 <button class="carousel-button next" onclick="changeSlide(1)">❯</button>
 <div class="carousel-indicators">
@@ -268,6 +269,7 @@
 <span class="indicator" onclick="goToSlide(1)"></span>
 <span class="indicator" onclick="goToSlide(2)"></span>
 <span class="indicator" onclick="goToSlide(3)"></span>
+<span class="indicator" onclick="goToSlide(4)"></span>
 </div>
 </div>
 </div>
@@ -3281,20 +3283,33 @@
   }
   MARCA_SECCION.katmas = MARCA_SECCION.katmas || 'Imperdibles';
 
+  /* Compara títulos sin fijarse en emojis, acentos, mayúsculas ni espacios de más:
+     "🧴 Cuidado de la Piel" y "Cuidado de la piel" son la misma categoría. */
+  function claveTitulo(t){
+    let s = String(t == null ? '' : t);
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e){}
+    try { s = s.replace(/[^\p{Letter}\p{Number}]+/gu, ' '); }
+    catch(e){ s = s.replace(/[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/g, ' '); }
+    return s.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
   function rejillaDe(seccionId, categoria){
     const sec = document.getElementById(seccionId);
     if(!sec) return null;
-    const buscada = String(categoria||'').trim();
-    const titulos = sec.querySelectorAll('h3.category-title');
-    for(let i = 0; i < titulos.length; i++){
-      if(titulos[i].textContent.trim() === buscada){
-        let e = titulos[i].nextElementSibling;
-        while(e && !(e.classList && e.classList.contains('products-grid'))) e = e.nextElementSibling;
-        if(e) return e;
-      }
+    const buscada = claveTitulo(categoria);
+    /* Se miran TODOS los encabezados de la sección, tengan clase o no:
+       los de "Recomendaciones de Sascha" nunca la tuvieron. */
+    const titulos = sec.querySelectorAll('h3, h4');
+    if(buscada) for(let i = 0; i < titulos.length; i++){
+      if(titulos[i].classList.contains('section-title')) continue;
+      if(claveTitulo(titulos[i].textContent) !== buscada) continue;
+      let e = titulos[i].nextElementSibling;
+      while(e && !(e.classList && e.classList.contains('products-grid'))) e = e.nextElementSibling;
+      if(e) return e;
     }
     const h = document.createElement('h3');
-    h.className = 'category-title'; h.textContent = buscada || 'Novedades';
+    h.className = 'category-title';
+    h.textContent = String(categoria||'').trim() || 'Novedades';
     const g = document.createElement('div'); g.className = 'products-grid';
     sec.appendChild(h); sec.appendChild(g);
     return g;

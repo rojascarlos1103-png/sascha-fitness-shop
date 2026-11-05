@@ -116,6 +116,7 @@ section{display:none} section.on{display:block}
 </div>
 
 <div id="app" style="display:none">
+<div id="estadoCarga"></div>
 <header>
   <h1>Sascha Fitness Shop MX</h1>
   <button class="salir" onclick="salir()">Salir</button>
@@ -361,13 +362,32 @@ async function entrar(){
 async function salir(){ await db.auth.signOut(); location.reload(); }
 
 async function revisarSesion(){
-  const { data } = await db.auth.getSession();
-  if(data.session) arrancar();
+  try{
+    /* Si Supabase tarda, no dejamos el panel colgado: a los 12 segundos
+       se muestra la pantalla de entrar y la clienta puede volver a intentar. */
+    const r = await Promise.race([
+      db.auth.getSession(),
+      new Promise(res => setTimeout(() => res({ data:{ session:null }, lento:true }), 12000))
+    ]);
+    if(r && r.data && r.data.session) arrancar();
+    else document.getElementById('acceso').style.display = 'block';
+  }catch(e){
+    document.getElementById('acceso').style.display = 'block';
+  }
 }
 function arrancar(){
   document.getElementById('acceso').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   cargarTodo();
+}
+
+/* Una consulta que nunca deja colgado al panel: si falla o tarda,
+   devuelve vacío y dice qué pasó, en vez de tumbar todo lo demás. */
+function conTiempo(consulta, nombre, ms){
+  return Promise.race([
+    Promise.resolve(consulta).then(r => r, e => ({ data:null, error:e, nombre:nombre })),
+    new Promise(res => setTimeout(() => res({ data:null, tarde:true, nombre:nombre }), ms || 20000))
+  ]).then(r => { r.nombre = nombre; return r; });
 }
 
 /* ---------------- utilidades ---------------- */
@@ -383,31 +403,75 @@ function ver(id, boton){
   document.getElementById(id).classList.add('on');
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
   boton.classList.add('on');
+  if(id === 'reportes') cargarVentas();
 }
 
 /* ---------------- carga ---------------- */
+let cargandoYa = false;
+
 async function cargarTodo(){
-  const [p, o, c, r, w, pr, cp, rs, sc, ct, vt, ca] = await Promise.all([
-    db.from('productos').select('*').order('linea').order('nombre'),
-    db.from('pedidos').select('*, clientes(nombre,telefono,email), pedido_items(*)').order('creado_en',{ascending:false}).limit(200),
-    db.from('clientes').select('*').order('creado_en',{ascending:false}).limit(400),
-    db.from('v_avisos_hoy').select('*'),
-    db.from('v_lista_espera').select('*'),
-    db.from('presentaciones').select('*').order('tipo').order('nombre'),
-    db.from('presentacion_componentes').select('*'),
-    db.from('respaldos').select('creado_en,filas,resultado').order('creado_en',{ascending:false}).limit(1),
-    db.from('secciones').select('*').order('orden'),
-    db.from('categorias').select('*').order('orden'),
+  if(cargandoYa) return;
+  cargandoYa = true;
+  const caja = document.getElementById('estadoCarga');
+  if(caja) caja.innerHTML = '<div class="tarjeta" style="background:#eef3ff">Cargando tus datos…</div>';
+
+  /* El reporte de ventas puede traer miles de renglones; ése se pide aparte,
+     sólo cuando abres la pestaña, para que el panel abra rápido siempre. */
+  const q = [
+    ['productos',   db.from('productos').select('*').order('linea').order('nombre')],
+    ['pedidos',     db.from('pedidos').select('*, clientes(nombre,telefono,email,calle,colonia,ciudad,estado,cp,referencias,entrecalles), pedido_items(*)').order('creado_en',{ascending:false}).limit(200)],
+    ['clientes',    db.from('clientes').select('*').order('creado_en',{ascending:false}).limit(400)],
+    ['recompras',   db.from('v_avisos_hoy').select('*')],
+    ['espera',      db.from('v_lista_espera').select('*')],
+    ['presentaciones', db.from('presentaciones').select('*').order('tipo').order('nombre')],
+    ['componentes', db.from('presentacion_componentes').select('*')],
+    ['respaldos',   db.from('respaldos').select('creado_en,filas,resultado').order('creado_en',{ascending:false}).limit(1)],
+    ['secciones',   db.from('secciones').select('*').order('orden')],
+    ['categorias',  db.from('categorias').select('*').order('orden')],
+    ['carritos',    db.from('v_carritos_abandonados').select('*').limit(300)]
+  ];
+  const res = await Promise.all(q.map(([n,c]) => conTiempo(c, n, 20000)));
+  const d = {}; const fallaron = [];
+  res.forEach(r => {
+    d[r.nombre] = (r && r.data) || [];
+    if(r && (r.error || r.tarde)) fallaron.push(r.nombre);
+  });
+
+  productos = d.productos; pedidos = d.pedidos; clientes = d.clientes;
+  recompras = d.recompras; espera = d.espera;
+  presentaciones = d.presentaciones; componentes = d.componentes;
+  respaldos = d.respaldos; secciones = d.secciones; categorias = d.categorias;
+  carritos = d.carritos;
+
+  /* Cada dibujo va por su cuenta: si uno truena, los demás igual se pintan. */
+  [pintarResumen, pintarInventario, pintarPedidos, pintarClientes, pintarRecompras,
+   pintarEspera, pintarPacks, llenarSecciones, pintarNuevos, pintarSecciones,
+   pintarReportes, pintarCarritos].forEach(f => { try{ f(); }catch(e){ console.warn(e); } });
+
+  if(caja){
+    caja.innerHTML = fallaron.length
+      ? '<div class="tarjeta" style="background:#fdecec;border-color:#f3c6c6">'
+        + '<b style="color:#b4341f">No cargó todo</b>'
+        + '<div class="sub">Faltó: ' + fallaron.join(', ') + '. Lo demás sí está y puedes trabajar.</div>'
+        + '<button class="btn claro" style="margin-top:8px" onclick="recargarTodo()">Volver a intentar</button></div>'
+      : '';
+  }
+  cargandoYa = false;
+}
+
+function recargarTodo(){ cargandoYa = false; cargarTodo(); }
+
+/* El reporte de ventas se trae la primera vez que abres su pestaña */
+let ventasPedidas = false;
+async function cargarVentas(){
+  if(ventasPedidas) return;
+  ventasPedidas = true;
+  const r = await conTiempo(
     db.from('v_items_vendidos').select('*').order('fecha',{ascending:false}).limit(8000),
-    db.from('v_carritos_abandonados').select('*').limit(300)
-  ]);
-  productos = p.data || []; pedidos = o.data || [];
-  clientes = c.data || []; recompras = r.data || []; espera = w.data || [];
-  presentaciones = pr.data || []; componentes = cp.data || [];
-  respaldos = rs.data || []; secciones = sc.data || []; categorias = ct.data || [];
-  ventas = vt.data || []; carritos = ca.data || [];
-  pintarResumen(); pintarInventario(); pintarPedidos(); pintarClientes(); pintarRecompras(); pintarEspera(); pintarPacks();
-  llenarSecciones(); pintarNuevos(); pintarSecciones(); pintarReportes(); pintarCarritos();
+    'ventas', 30000);
+  ventas = (r && r.data) || [];
+  if(r && (r.error || r.tarde)) ventasPedidas = false;
+  try{ pintarReportes(); }catch(e){ console.warn(e); }
 }
 
 /* ---------------- resumen ---------------- */
@@ -1037,6 +1101,7 @@ function pintarPedidos(){
         </div>
       </div>
       <div class="sub" style="margin-bottom:10px">${items || 'Sin partidas'}</div>
+      ${bloqueEnvio(p)}
       <div class="fila">
         <select onchange="cambiarEstado(${p.id}, this.value)" style="width:auto">
           ${ESTADOS.map(e=>`<option ${e===p.estado?'selected':''}>${e}</option>`).join('')}
@@ -1046,6 +1111,61 @@ function pintarPedidos(){
       </div>
     </div>`;
   }).join('') : '<div class="vacio">Todavía no hay pedidos aquí.</div>';
+}
+
+/* Lo que necesitas para la guía, junto y listo para copiar.
+   Si la clienta no dejó dirección, lo dice claro en vez de quedarse vacío. */
+function textoEnvio(p){
+  const c = p.clientes || {};
+  const partes = [
+    c.nombre || '',
+    [c.calle || '', c.colonia ? 'Col. ' + c.colonia : ''].filter(Boolean).join(', '),
+    [c.cp ? 'C.P. ' + c.cp : '', c.ciudad || '', c.estado || ''].filter(Boolean).join(', '),
+    c.entrecalles ? 'Entre calles: ' + c.entrecalles : '',
+    c.referencias ? 'Referencias: ' + c.referencias : '',
+    c.telefono ? 'Tel: ' + c.telefono : ''
+  ].filter(s => s && s.trim());
+  return partes.join('\n');
+}
+
+function hayDireccion(p){
+  const c = p.clientes || {};
+  return !!((c.calle && c.calle.trim()) || (c.cp && c.cp.trim()));
+}
+
+function bloqueEnvio(p){
+  if(!hayDireccion(p)){
+    return `<div class="tarjeta" style="background:#fdecec;border-color:#f3c6c6;padding:9px 12px;margin:0 0 10px">
+      <b style="color:#b4341f">Sin dirección</b>
+      <div class="sub">Este pedido no trae datos de envío. Pídeselos por WhatsApp antes de generar la guía.</div>
+    </div>`;
+  }
+  const txt = textoEnvio(p);
+  return `<div class="tarjeta" style="background:#f3f7ff;border-color:#d7e2f7;padding:9px 12px;margin:0 0 10px">
+    <div class="fila" style="align-items:flex-start">
+      <div class="crece" style="white-space:pre-line;font-size:13.5px;line-height:1.45">${esc(txt)}</div>
+      <button class="btn claro" style="padding:7px 11px"
+              onclick="copiarEnvio(${p.id}, this)">Copiar</button>
+    </div>
+  </div>`;
+}
+
+async function copiarEnvio(id, boton){
+  const p = pedidos.find(x => x.id === id);
+  if(!p) return;
+  const txt = textoEnvio(p);
+  try{
+    await navigator.clipboard.writeText(txt);
+  }catch(e){
+    const a = document.createElement('textarea');
+    a.value = txt; a.style.position = 'fixed'; a.style.opacity = '0';
+    document.body.appendChild(a); a.select();
+    try{ document.execCommand('copy'); }catch(e2){}
+    a.remove();
+  }
+  const antes = boton.textContent;
+  boton.textContent = '✓ Copiado';
+  setTimeout(() => { boton.textContent = antes; }, 1800);
 }
 
 async function cambiarEstado(id, estado){
