@@ -2400,6 +2400,20 @@
            Quien no tenga código paga lo de siempre: nada cambia para ella. */
         let cuponAplicado = null;
 
+        /* Aplica UNO de los dos, nunca los dos juntos: el que más le
+           convenga a la clienta. Si el código da menos que el 5% de
+           transferencia, se queda con el 5% y no pierde nada. */
+        function descuentos(subtotal){
+            const porTransfer = (paymentMethod === 'whatsapp')
+                ? Math.round(subtotal * DESCUENTO_TRANSFERENCIA) : 0;
+            const porCodigo = descuentoCupon(subtotal);
+            if(porCodigo > porTransfer)
+                return { monto: porCodigo, cual: 'codigo',
+                         etiqueta: '🎟️ Código ' + (cuponAplicado ? cuponAplicado.codigo : '') };
+            return { monto: porTransfer, cual: porTransfer > 0 ? 'transferencia' : 'ninguno',
+                     etiqueta: 'Descuento 5% por transferencia' };
+        }
+
         function descuentoCupon(subtotal){
             if(!cuponAplicado) return 0;
             if(paymentMethod !== 'whatsapp') return 0;   /* sólo con transferencia */
@@ -2667,11 +2681,11 @@
                 });
             }
 
-            const conDescuento = paymentMethod === 'whatsapp';
-            const descuento = conDescuento ? Math.round(total * DESCUENTO_TRANSFERENCIA) : 0;
-            const extra = descuentoCupon(total);
+            const d = descuentos(total);
+            const conDescuento = d.monto > 0;
+            const descuento = d.monto;
             const envio = calcularEnvio(items);
-            const totalFinal = total - descuento - extra + envio;
+            const totalFinal = total - descuento + envio;
 
             html += `<div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #24478f;">`;
             if(conDescuento || envio > 0) {
@@ -2680,13 +2694,8 @@
                 </div>`;
             }
             if(conDescuento) {
-                html += `<div style="display: flex; justify-content: space-between; color: #25d366; font-weight: bold; font-size: 0.95em; padding: 2px 0;">
-                    <span>Descuento 5% por transferencia</span><span>−$${descuento.toLocaleString('es-MX')} MXN</span>
-                </div>`;
-            }
-            if(extra > 0) {
-                html += `<div style="display: flex; justify-content: space-between; color: #b4341f; font-weight: bold; font-size: 0.95em; padding: 2px 0;">
-                    <span>🎟️ Código ${cuponAplicado.codigo}</span><span>−$${extra.toLocaleString('es-MX')} MXN</span>
+                html += `<div style="display: flex; justify-content: space-between; color: ${d.cual === 'codigo' ? '#b4341f' : '#25d366'}; font-weight: bold; font-size: 0.95em; padding: 2px 0;">
+                    <span>${d.etiqueta}</span><span>−$${descuento.toLocaleString('es-MX')} MXN</span>
                 </div>`;
             }
             if(envio > 0) {
@@ -3851,8 +3860,9 @@
     });
     if(!corta && (p.descuento > 0 || p.envio > 0)){
       m += 'Subtotal: ' + pesosTxt(p.subtotal) + '\n';
-      if(p.descuento > 0) m += 'Descuento 5%: −' + pesosTxt(p.descuento) + '\n';
-      if(p.extra > 0) m += '🎟️ Código ' + (p.cupon || '') + ': −' + pesosTxt(p.extra) + '\n';
+      if(p.descuento > 0)
+        m += (p.cupon ? '🎟️ Código ' + p.cupon : 'Descuento 5%')
+           + ': −' + pesosTxt(p.descuento) + '\n';
       m += 'Envío: ' + (p.envio > 0 ? pesosTxt(p.envio) : 'GRATIS 🚚') + '\n';
     }
     return m;
@@ -4057,17 +4067,19 @@
         /* mismo cálculo que muestra el resumen: 5% al pagar por transferencia */
         const conDesc  = (typeof paymentMethod !== 'undefined') && paymentMethod === 'whatsapp';
         const tasa     = (typeof DESCUENTO_TRANSFERENCIA !== 'undefined') ? DESCUENTO_TRANSFERENCIA : 0.05;
-        const descuento = conDesc ? Math.round(subtotal * tasa) : 0;
-        const extra = (typeof descuentoCupon === 'function') ? descuentoCupon(subtotal) : 0;
-        const totalFinal = subtotal - descuento - extra + envio;
+        const d = (typeof descuentos === 'function')
+                  ? descuentos(subtotal)
+                  : { monto: conDesc ? Math.round(subtotal * tasa) : 0, cual: 'transferencia' };
+        const descuento = d.monto;
+        const totalFinal = subtotal - descuento + envio;
 
         /* foto del pedido para el mensaje de WhatsApp (el carrito se vacía después) */
         window.ultimoPedido = {
           items: items.map(function(i){
             return { nombre: i.nombre, cant: i.cantidad || 1, precio: i.precio };
           }),
-          subtotal: subtotal, descuento: descuento, extra: extra,
-          cupon: (typeof cuponAplicado !== 'undefined' && cuponAplicado && extra > 0)
+          subtotal: subtotal, descuento: descuento, cual: d.cual,
+          cupon: (d.cual === 'codigo' && typeof cuponAplicado !== 'undefined' && cuponAplicado)
                    ? cuponAplicado.codigo : null,
           envio: envio, total: totalFinal
         };
@@ -4599,10 +4611,11 @@
       var items = consolidarCarrito();
       var sub = items.reduce(function(s,i){ return s + i.precio * (i.cantidad || 1); }, 0);
       var env = (typeof calcularEnvio === 'function') ? calcularEnvio(items) : 0;
-      var des = (paymentMethod === 'whatsapp' && typeof DESCUENTO_TRANSFERENCIA !== 'undefined')
-                ? Math.round(sub * DESCUENTO_TRANSFERENCIA) : 0;
-      var ext = (typeof descuentoCupon === 'function') ? descuentoCupon(sub) : 0;
-      return sub - des - ext + env;
+      var des = (typeof descuentos === 'function')
+                ? descuentos(sub).monto
+                : ((paymentMethod === 'whatsapp' && typeof DESCUENTO_TRANSFERENCIA !== 'undefined')
+                   ? Math.round(sub * DESCUENTO_TRANSFERENCIA) : 0);
+      return sub - des + env;
     }catch(e){ return 0; }
   }
 
